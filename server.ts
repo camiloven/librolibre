@@ -379,24 +379,68 @@ app.post('/api/transactions', (req: Request, res: Response) => {
 });
 
 async function startServer() {
-  const distPath = path.resolve(__dirname, 'dist');
-  const hasDist = fs.existsSync(distPath) && fs.existsSync(path.resolve(distPath, 'index.html'));
+  const rootDir = process.cwd();
+  const distPath = path.resolve(rootDir, 'dist');
+  const indexPath = path.resolve(distPath, 'index.html');
 
   if (isProduction) {
+    // If production build does not exist yet, build it automatically on startup
+    if (!fs.existsSync(indexPath)) {
+      console.log('⚡ dist/index.html not detected. Running production build now...');
+      try {
+        const { execSync } = await import('child_process');
+        execSync('npm run build', { stdio: 'inherit' });
+      } catch (err) {
+        console.error('Failed to run automated build:', err);
+      }
+    }
+
     // Serve production static assets from dist
-    app.use(express.static(distPath));
+    if (fs.existsSync(distPath)) {
+      app.use(express.static(distPath, { maxAge: '1d', index: false }));
+    }
 
     // Serve public directory assets as fallback
-    app.use(express.static(path.resolve(__dirname, 'public')));
+    const publicPath = path.resolve(rootDir, 'public');
+    if (fs.existsSync(publicPath)) {
+      app.use(express.static(publicPath, { maxAge: '1d', index: false }));
+    }
 
     // SPA wildcard fallback
-    app.get('*', (_req: Request, res: Response) => {
-      const indexPath = path.resolve(distPath, 'index.html');
-      if (fs.existsSync(indexPath)) {
-        res.sendFile(indexPath);
-      } else {
-        res.sendFile(path.resolve(__dirname, 'index.html'));
+    app.get('*', (req: Request, res: Response) => {
+      // Do not return HTML for missing static files (scripts, styles, images)
+      if (req.path.match(/\.[a-zA-Z0-9]+$/)) {
+        return res.status(404).end();
       }
+
+      if (fs.existsSync(indexPath)) {
+        return res.sendFile(indexPath);
+      }
+
+      // Fallback HTML if build failed
+      return res.status(200).send(`<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>LibroLibre - Iniciando</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { background: #0b0f19; color: #f8fafc; font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; text-align: center; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 32px; max-width: 480px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }
+    h1 { color: #f59e0b; font-size: 24px; margin-bottom: 12px; }
+    p { color: #94a3b8; font-size: 15px; line-height: 1.5; margin-bottom: 24px; }
+    button { background: #f59e0b; color: #0b0f19; font-weight: bold; border: none; border-radius: 8px; padding: 12px 24px; font-size: 14px; cursor: pointer; }
+    button:hover { background: #d97706; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>📖 LibroLibre</h1>
+    <p>La plataforma se está compilando para producción en el servidor. Por favor recarga en unos segundos.</p>
+    <button onclick="window.location.reload()">Recargar Aplicación</button>
+  </div>
+</body>
+</html>`);
     });
   } else {
     // Development mode with Vite live middlewares

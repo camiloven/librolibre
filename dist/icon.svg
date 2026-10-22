@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b0f19" />
+      <stop offset="100%" stop-color="#111827" />
+    </linearGradient>
+    <linearGradient id="emeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+  </defs>
+  <!-- Background with safe zone -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)" />
+  <rect x="24" y="24" width="464" height="464" rx="96" fill="none" stroke="#10b981" stroke-width="4" stroke-opacity="0.3" />
+  
+  <!-- SportPredict Shield Graphic -->
+  <path d="M 256 96 L 384 144 C 384 264 256 360 256 384 C 256 360 128 264 128 144 Z" fill="#10b981" fill-opacity="0.12" stroke="url(#emeraldGrad)" stroke-width="14" stroke-linejoin="round" />
+  
+  <!-- Dynamic Trend Lines (Analytics / Win Rate) -->
+  <path d="M 176 270 L 224 230 L 272 254 L 336 186" fill="none" stroke="#34d399" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" />
+  <circle cx="336" cy="186" r="10" fill="#34d399" />
+  
+  <!-- Brand Text SP -->
+  <text x="256" y="328" text-anchor="middle" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-weight="900" font-size="52" fill="#ffffff" letter-spacing="4">SP PRO</text>
+</svg>
