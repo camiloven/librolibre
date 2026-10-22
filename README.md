@@ -82,6 +82,32 @@ git push -u origin main
 
 ---
 
+## 🌐 Ver la Aplicación en la Web
+
+### 1. Enlace Directo en Vivo (Cloud Run / AI Studio)
+Puedes acceder y probar la aplicación directamente en cualquier navegador o dispositivo móvil:
+- **Enlace de Producción Compartido**: [Ver App en la Web](https://ais-pre-y743rpc6d6675xqcq42iot-289584158697.us-east5.run.app)
+- **Enlace de Desarrollo en Vivo**: [Ver App Dev](https://ais-dev-y743rpc6d6675xqcq42iot-289584158697.us-east5.run.app)
+
+---
+
+## ☁️ Publicar en la Web Gratis desde GitHub (Hosting Propio)
+
+Como la aplicación cuenta con un servidor backend Express para la gestión de descargas y carga de archivos, puedes desplegarla gratis en 1 clic:
+
+### Opción A: Render (Recomendada)
+1. Entra a [render.com](https://render.com) e inicia sesión con tu cuenta de GitHub.
+2. Haz clic en **New +** > **Web Service**.
+3. Selecciona tu repositorio `camiloven/librolibre`.
+4. El archivo `render.yaml` ya configurado se encargará del build (`npm install && npm run build`) y el start (`npm start`).
+5. ¡Listo! Render te dará una URL pública tipo `https://librolibre.onrender.com`.
+
+### Opción B: Railway o Koyeb
+1. Conecta tu repositorio de GitHub `camiloven/librolibre`.
+2. Detectará automáticamente Node.js y ejecutará `npm start`.
+
+---
+
 ## 📄 Licencia
 
 Este proyecto está bajo la Licencia MIT.
