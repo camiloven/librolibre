@@ -1,0 +1,45 @@
+{
+  "name": "Camilo V. & Ediciones Independientes Chile",
+  "bio": "Escritor e investigador independiente chileno. Publico y distribuyo directamente mis obras para la comunidad lectora en Chile y el mundo, sin intermediarios ni recargos editoriales. Puedes descargar gratis los títulos que libero o apoyar con transferencias locales y Mercado Pago.",
+  "tagline": "Literatura y conocimiento independiente en Chile.",
+  "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+  "email": "camiloven@gmail.com",
+  "website": "https://camiloven.com",
+  "currency": "CLP",
+  "currencySymbol": "$",
+  "adminPin": "1234",
+  "paymentMethods": {
+    "chile": {
+      "bancoEstado": {
+        "enabled": true,
+        "accountType": "CuentaRUT",
+        "accountNumber": "18234567",
+        "rut": "18.234.567-8",
+        "holderName": "Camilo V.",
+        "notifyEmail": "camiloven@gmail.com",
+        "instructions": "Transfiere desde tu app BancoEstado o cualquier banco chileno usando los datos indicados y envía el comprobante a camiloven@gmail.com o regístralo aquí para descarga inmediata."
+      },
+      "mercadoPagoChile": {
+        "enabled": true,
+        "linkOrAlias": "mercadopago.cl/camilo-autor",
+        "qrOrCode": "camilo.libros.mp",
+        "instructions": "Paga con dinero en cuenta de Mercado Pago Chile, Tarjeta de Débito (Redcompra) o Crédito."
+      },
+      "webpay": {
+        "enabled": true,
+        "paymentLink": "https://webpay.transbank.cl/camilo-libros",
+        "provider": "Webpay Plus / Transbank / Redcompra"
+      },
+      "machTenpo": {
+        "enabled": true,
+        "walletType": "Mach",
+        "phoneOrHandle": "+56 9 8765 4321 / @camilo-autor"
+      }
+    },
+    "paypal": {
+      "enabled": true,
+      "emailOrLink": "camiloven@gmail.com",
+      "username": "paypal.me/camiloven"
+    }
+  }
+}

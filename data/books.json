@@ -1,0 +1,140 @@
+[
+  {
+    "id": "book-1",
+    "title": "El Faro del Silencio",
+    "subtitle": "Una novela sobre la soledad, el mar y los secretos familiares",
+    "author": "Camilo V.",
+    "synopsis": "En una costa azotada por el oleaje del Pacífico sur, Clara hereda la bitácora del viejo faro. Al descifrar los apuntes que su abuelo guardó durante cuatro décadas, descubre que algunos naufragios nunca fueron accidentes, sino pactos para salvar vidas que el continente creía perdidas.",
+    "genre": "Ficción Literaria",
+    "coverUrl": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80",
+    "pricingType": "free",
+    "price": 0,
+    "isLiberated": false,
+    "downloadCount": 1420,
+    "pageCount": 312,
+    "language": "Español",
+    "publicationYear": 2025,
+    "fileType": "PDF",
+    "fileSize": "3.8 MB",
+    "rating": 4.9,
+    "reviewCount": 88,
+    "createdAt": "2025-01-15",
+    "tags": [
+      "Novela",
+      "Chile",
+      "Misterio",
+      "Drama"
+    ],
+    "sampleChapters": [
+      {
+        "id": "ch-1",
+        "title": "La marea de medianoche",
+        "content": "La linterna del faro giraba con un quejido mecánico que Clara recordaba desde sus siete años. Aquel chirrido rítmico no era una molestia, sino el latido del acantilado. Afuera, la tormenta de octubre golpeaba los cristales con salitre blanco.\n\nEn la mesa de roble, el cuaderno encuadernado en cuero crudo descansaba junto a una taza de té humeante. La primera página no contenía registros de mareas ni velocidades de viento, sino siete nombres tachados con tinta negra. El primero de ellos era el de su propia madre.\n\n\"Quien vigila la luz no decide a quién salva\", rezaba una anotación al margen con la caligrafía temblorosa del viejo Tomás."
+      }
+    ]
+  },
+  {
+    "id": "book-2",
+    "title": "El Arte de Encontrar el Equilibrio",
+    "subtitle": "Guía minimalista para calmar la mente y simplificar la vida diaria",
+    "author": "Camilo V.",
+    "synopsis": "Un manual sereno y profundamente humano para desarmar la prisa moderna. A través de reflexiones breves, ejercicios de atención plena y principios de diseño vital, este libro enseña a soltar el exceso de equipaje emocional y construir rutinas con calma y propósito.",
+    "genre": "Desarrollo Personal",
+    "coverUrl": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80",
+    "pricingType": "paid",
+    "price": 9990,
+    "isLiberated": true,
+    "liberatedNote": "¡Obra liberada gratuitamente por el autor para todos los lectores en Chile y el mundo!",
+    "liberatedAt": "2026-10-15",
+    "downloadCount": 3840,
+    "pageCount": 224,
+    "language": "Español",
+    "publicationYear": 2024,
+    "fileType": "PDF",
+    "fileSize": "4.2 MB",
+    "rating": 4.95,
+    "reviewCount": 215,
+    "createdAt": "2024-08-20",
+    "tags": [
+      "Mindfulness",
+      "Minimalismo",
+      "Paz Mental",
+      "Bienestar"
+    ],
+    "sampleChapters": [
+      {
+        "id": "ch-1",
+        "title": "El peso de lo innecesario",
+        "content": "Creemos que necesitamos más: más horas en el día, más proyectos en la libreta, más opiniones que escuchar. Pero la serenidad no es el resultado de acumular recursos, sino de tener la valentía de restar ruido.\n\nCuando colocas tres piedras en equilibrio, la última no se sostiene por la fuerza, sino por la precisión de su punto de contacto. Lo mismo ocurre con tu mente: cada compromiso que aceptas sin convicción es un peso muerto que desestabiliza el conjunto."
+      }
+    ]
+  },
+  {
+    "id": "book-3",
+    "title": "The Aeon Chronicles: Horizontes de Neón",
+    "subtitle": "Ciencia ficción especulativa en un futuro de megaciudades y conciencia digital",
+    "author": "Camilo V.",
+    "synopsis": "Año 2184. En la megalópolis costera de Nueva Valparaíso, los recuerdos humanos cotizan en bolsa de valores sintética. Kael, un archivista disidente, tropieza con una memoria prohibida que demuestra que la última extinción biológica fue programada.",
+    "genre": "Ciencia Ficción",
+    "coverUrl": "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80",
+    "pricingType": "paid",
+    "price": 6990,
+    "isLiberated": false,
+    "downloadCount": 890,
+    "pageCount": 440,
+    "language": "Español",
+    "publicationYear": 2026,
+    "fileType": "EPUB",
+    "fileSize": "5.1 MB",
+    "rating": 4.8,
+    "reviewCount": 64,
+    "createdAt": "2026-03-01",
+    "tags": [
+      "Sci-Fi",
+      "Cyberpunk",
+      "Futuro"
+    ],
+    "sampleChapters": [
+      {
+        "id": "ch-1",
+        "title": "El mercado de memorias",
+        "content": "Bajo los paneles holográficos del Sector 9, la lluvia ácida tenía el sabor de los metales pesados. Kael ajustó el collar neural que amortiguaba la sobrecarga sensorial de la red central.\n\nEn su terminal de cuarzo, la transacción apareció sin remitente: 40 gigabits de memoria pura no indexada."
+      }
+    ]
+  },
+  {
+    "id": "book-4",
+    "title": "Elevate: Hábitos para el Alto Rendimiento",
+    "subtitle": "Estrategias probadas de productividad con propósito y foco profundo",
+    "author": "Camilo V.",
+    "synopsis": "Cómo multiplicar tu capacidad creativa y laboral sin sacrificar tu salud ni tus relaciones personales. Un sistema práctico probado paso a paso para profesionales y creadores.",
+    "genre": "Productividad & Negocios",
+    "coverUrl": "https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=600&q=80",
+    "pricingType": "pwyw",
+    "price": 8990,
+    "allowPwywMin": 1000,
+    "isLiberated": false,
+    "downloadCount": 2150,
+    "pageCount": 280,
+    "language": "Español",
+    "publicationYear": 2025,
+    "fileType": "PDF",
+    "fileSize": "3.2 MB",
+    "rating": 4.88,
+    "reviewCount": 142,
+    "createdAt": "2025-05-10",
+    "tags": [
+      "Productividad",
+      "Hábitos",
+      "Enfoque",
+      "Carrera"
+    ],
+    "sampleChapters": [
+      {
+        "id": "ch-1",
+        "title": "La regla del bloque intocable",
+        "content": "Los profesionales mediocres gestionan su tiempo; los creadores extraordinarios gestionan su atención. No necesitas ocho horas de trabajo extenuante para producir una obra maestra: necesitas noventa minutos de concentración profunda sin interrupciones."
+      }
+    ]
+  }
+]

@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Books collection: public read for all readers, write for admin operations
+    match /books/{bookId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Author profile and settings (BancoEstado, Mercado Pago, bio, photo)
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Coupons
+    match /coupons/{couponId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Transactions and download records
+    match /transactions/{transactionId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if true;
+    }
+  }
+}

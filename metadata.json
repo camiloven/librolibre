@@ -1,0 +1,7 @@
+{
+  "name": "LibroLibre - Plataforma Editorial & Descargas de Libros",
+  "description": "Plataforma para autores: sube tus libros en PDF o EPUB, gestiona descargas, configura métodos de pago y libéralos gratis cuando tú decidas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

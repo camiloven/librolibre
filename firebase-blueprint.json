@@ -1,0 +1,78 @@
+{
+  "entities": {
+    "Book": {
+      "title": "Book",
+      "description": "A book published by the author with metadata, pricing in CLP, liberation status, and download links.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "author": { "type": "string" },
+        "synopsis": { "type": "string" },
+        "genre": { "type": "string" },
+        "coverUrl": { "type": "string" },
+        "pricingType": { "type": "string", "enum": ["free", "paid", "pwyw"] },
+        "price": { "type": "number" },
+        "isLiberated": { "type": "boolean" },
+        "liberatedNote": { "type": "string" },
+        "liberatedAt": { "type": "string" },
+        "downloadCount": { "type": "number" },
+        "pageCount": { "type": "number" },
+        "language": { "type": "string" },
+        "publicationYear": { "type": "number" },
+        "fileType": { "type": "string" },
+        "fileSize": { "type": "string" },
+        "rating": { "type": "number" },
+        "reviewCount": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "tags": { "type": "array" }
+      },
+      "required": ["id", "title", "author", "price", "isLiberated", "fileType"]
+    },
+    "AuthorProfile": {
+      "title": "AuthorProfile",
+      "description": "Author details, bio, photo, and Chilean payment methods including BancoEstado and Mercado Pago.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "bio": { "type": "string" },
+        "tagline": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "email": { "type": "string" },
+        "currency": { "type": "string" },
+        "paymentMethods": { "type": "object" }
+      },
+      "required": ["name", "email", "currency"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Record of a book download or purchase via Chilean payment methods.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "bookId": { "type": "string" },
+        "bookTitle": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "type": { "type": "string" },
+        "date": { "type": "string" }
+      },
+      "required": ["id", "bookId", "amount", "date"]
+    }
+  },
+  "firestore": {
+    "/books/{bookId}": {
+      "schema": "Book",
+      "description": "Collection of all published and liberated books accessible to all readers."
+    },
+    "/settings/authorProfile": {
+      "schema": "AuthorProfile",
+      "description": "Author profile configuration and payment details."
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Book transactions and download logs."
+    }
+  }
+}
