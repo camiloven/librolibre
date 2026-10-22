@@ -34,6 +34,119 @@ const AUTHOR_FILE = path.resolve(DATA_DIR, 'author.json');
 const COUPONS_FILE = path.resolve(DATA_DIR, 'coupons.json');
 const TRANSACTIONS_FILE = path.resolve(DATA_DIR, 'transactions.json');
 
+const DEFAULT_SERVER_BOOKS = [
+  {
+    id: 'book-1',
+    title: 'El Faro del Silencio',
+    subtitle: 'Una novela sobre la soledad, el mar y los secretos familiares',
+    author: 'Camilo V.',
+    synopsis: 'En una costa azotada por el oleaje del Pacífico sur, Clara hereda la bitácora del viejo faro. Al descifrar los apuntes que su abuelo guardó durante cuatro décadas, descubre que algunos naufragios nunca fueron accidentes, sino pactos para salvar vidas que el continente creía perdidas.',
+    genre: 'Ficción Literaria',
+    pricingType: 'free',
+    price: 0,
+    isLiberated: false,
+    downloadCount: 1420,
+    pageCount: 312,
+    language: 'Español',
+    publicationYear: 2025,
+    fileType: 'PDF',
+    fileSize: '3.8 MB',
+    rating: 4.9,
+    sampleChapters: [
+      {
+        id: 'ch-1',
+        title: 'La marea de medianoche',
+        content: `La linterna del faro giraba con un quejido mecánico que Clara recordaba desde sus siete años. Aquel chirrido rítmico no era una molestia, sino el latido del acantilado. Afuera, la tormenta de octubre golpeaba los cristales con salitre blanco.\n\nEn la mesa de roble, el cuaderno encuadernado en cuero crudo descansaba junto a una taza de té humeante. La primera página no contenía registros de mareas ni velocidades de viento, sino siete nombres tachados con tinta negra. El primero de ellos era el de su propia madre.\n\n"Quien vigila la luz no decide a quién salva", rezaba una anotación al margen con la caligrafía temblorosa del viejo Tomás.`
+      }
+    ]
+  },
+  {
+    id: 'book-2',
+    title: 'El Arte de Encontrar el Equilibrio',
+    subtitle: 'Guía minimalista para calmar la mente y simplificar la vida diaria',
+    author: 'Camilo V.',
+    synopsis: 'Un manual sereno y profundamente humano para desarmar la prisa moderna. A través de reflexiones breves, ejercicios de atención plena y principios de diseño vital, este libro enseña a soltar el exceso de equipaje emocional y construir rutinas con calma y propósito.',
+    genre: 'Desarrollo Personal',
+    pricingType: 'paid',
+    price: 9990,
+    isLiberated: true,
+    liberatedNote: '¡Obra liberada gratuitamente por el autor para todos los lectores en Chile y el mundo!',
+    downloadCount: 3840,
+    pageCount: 224,
+    language: 'Español',
+    publicationYear: 2024,
+    fileType: 'PDF',
+    fileSize: '4.2 MB',
+    rating: 4.95,
+    sampleChapters: [
+      {
+        id: 'ch-1',
+        title: 'El peso de lo innecesario',
+        content: `Creemos que necesitamos más: más horas en el día, más proyectos en la libreta, más opiniones que escuchar. Pero la serenidad no es el resultado de acumular recursos, sino de tener la valentía de restar ruido.\n\nCuando colocas tres piedras en equilibrio, la última no se sostiene por la fuerza, sino por la precisión de su punto de contacto. Lo mismo ocurre con tu mente: cada compromiso que aceptas sin convicción es un peso muerto que desestabiliza el conjunto.`
+      }
+    ]
+  },
+  {
+    id: 'book-3',
+    title: 'The Aeon Chronicles: Horizontes de Neón',
+    subtitle: 'Ciencia ficción especulativa en un futuro de megaciudades y conciencia digital',
+    author: 'Camilo V.',
+    synopsis: 'Año 2184. En la megalópolis costera de Nueva Valparaíso, los recuerdos humanos cotizan en bolsa de valores sintética. Kael, un archivista disidente, tropieza con una memoria prohibida que demuestra que la última extinción biológica fue programada.',
+    genre: 'Ciencia Ficción',
+    pricingType: 'paid',
+    price: 6990,
+    isLiberated: false,
+    downloadCount: 890,
+    pageCount: 440,
+    language: 'Español',
+    publicationYear: 2026,
+    fileType: 'PDF',
+    fileSize: '5.1 MB',
+    rating: 4.88,
+    sampleChapters: [
+      {
+        id: 'ch-1',
+        title: 'Mercaderes de memoria',
+        content: `La lluvia ácida repiqueteaba sobre la cúpula de acrílico blindado. En los callejones del nivel 12, los hologramas corporativos parpadeaban ofreciendo recuerdos ajenos a cambio de créditos de carbono.\n\nKael ajustó su visor neural. El fragmento de memoria que sostenía en el chip de cuarzo no era una simulación: latía con la frecuencia biológica de un cerebro real.`
+      }
+    ]
+  },
+  {
+    id: 'book-4',
+    title: 'Hábitos Cotidianos de Alto Rendimiento',
+    subtitle: 'Sistemas sencillos para trabajar con foco profundo y bienestar sostenible',
+    author: 'Camilo V.',
+    synopsis: 'Estrategias probadas para maximizar tu energía y concentración diaria. Aprende a crear bloques de trabajo profundo, eliminar la fatiga por decisiones y diseñar un entorno que fomente la excelencia constante sin caer en el agotamiento.',
+    genre: 'Productividad & Foco',
+    pricingType: 'paid',
+    price: 7990,
+    isLiberated: false,
+    downloadCount: 2150,
+    pageCount: 260,
+    language: 'Español',
+    publicationYear: 2025,
+    fileType: 'PDF',
+    fileSize: '3.5 MB',
+    rating: 4.92,
+    sampleChapters: [
+      {
+        id: 'ch-1',
+        title: 'La arquitectura del foco matutino',
+        content: `Las dos primeras horas de tu jornada determinan la dirección de tu energía. Si comienzas reaccionando a las demandas de otros en tu teléfono, cedes el control del día antes de haberlo empezado.\n\nEl trabajo profundo no es una cuestión de fuerza de voluntad, sino de fricción: reduce la fricción hacia lo que importa y auméntala exponencialmente hacia las distracciones.`
+      }
+    ]
+  }
+];
+
+// Ensure initial books are present
+try {
+  if (!fs.existsSync(BOOKS_FILE) || fs.readFileSync(BOOKS_FILE, 'utf-8').trim() === '[]' || fs.readFileSync(BOOKS_FILE, 'utf-8').trim() === '') {
+    fs.writeFileSync(BOOKS_FILE, JSON.stringify(DEFAULT_SERVER_BOOKS, null, 2), 'utf-8');
+  }
+} catch (e) {
+  console.warn('Initial books check warning:', e);
+}
+
 // Helper to save base64 data URLs to file system and return static URL
 function processBase64Media(dataUrl: string | undefined, prefix: string): string {
   if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) {
@@ -150,8 +263,8 @@ app.post('/api/upload-book-file', (req: Request, res: Response) => {
 app.get('/api/books/:id/download', (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const books = readJsonFile<any[]>(BOOKS_FILE, []);
-    const book = books.find((b) => b.id === id);
+    const books = readJsonFile<any[]>(BOOKS_FILE, DEFAULT_SERVER_BOOKS);
+    const book = books.find((b) => b.id === id) || DEFAULT_SERVER_BOOKS.find((b) => b.id === id) || DEFAULT_SERVER_BOOKS[0];
 
     // Support passing direct file url parameter
     const requestedFile = (req.query.file as string) || (book ? book.downloadUrl : null);
