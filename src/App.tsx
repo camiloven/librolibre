@@ -33,7 +33,8 @@ import { DeleteBookConfirmModal } from './components/DeleteBookConfirmModal';
 import { EditAuthorProfileModal } from './components/EditAuthorProfileModal';
 import { 
   Sparkles, BookOpen, ShieldCheck, Heart, ArrowRight, 
-  HelpCircle, CheckCircle, Feather, Download, Building2, Smartphone, CreditCard, Lock, Camera, Upload
+  HelpCircle, CheckCircle, Feather, Download, Building2, Smartphone, CreditCard, Lock, Camera, Upload,
+  LayoutGrid, Columns
 } from 'lucide-react';
 
 export default function App() {
@@ -60,6 +61,7 @@ export default function App() {
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('ALL');
+  const [catalogGridMode, setCatalogGridMode] = useState<'grid4' | 'comfort'>('grid4');
 
   // Floating Toast Notification
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
@@ -431,7 +433,7 @@ export default function App() {
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                     {liberatedBooks.slice(0, 4).map((book) => (
                       <BookCard
                         key={book.id}
@@ -439,6 +441,7 @@ export default function App() {
                         onSelect={setSelectedBookForDetails}
                         onPreview={setSelectedBookForReader}
                         onDownload={setSelectedBookForCheckout}
+                        compact={true}
                       />
                     ))}
                   </div>
@@ -448,9 +451,9 @@ export default function App() {
 
             {/* MAIN CATALOG GRID */}
             <section id="catalog-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <div>
-                  <h2 className="text-2xl sm:text-3xl font-serif font-bold text-white">
+                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-serif font-bold text-white">
                     {selectedGenre === 'ALL'
                       ? 'Catálogo Disponible en Chile'
                       : selectedGenre === 'LIBERATED'
@@ -462,17 +465,49 @@ export default function App() {
                   </p>
                 </div>
 
-                {(selectedGenre !== 'ALL' || searchQuery) && (
-                  <button
-                    onClick={() => {
-                      setSelectedGenre('ALL');
-                      setSearchQuery('');
-                    }}
-                    className="text-xs font-medium text-amber-400 hover:text-amber-300 cursor-pointer self-start sm:self-auto"
-                  >
-                    Restablecer filtros
-                  </button>
-                )}
+                <div className="flex items-center gap-3">
+                  {(selectedGenre !== 'ALL' || searchQuery) && (
+                    <button
+                      onClick={() => {
+                        setSelectedGenre('ALL');
+                        setSearchQuery('');
+                      }}
+                      className="text-xs font-medium text-amber-400 hover:text-amber-300 cursor-pointer"
+                    >
+                      Restablecer filtros
+                    </button>
+                  )}
+
+                  {/* Grid Density Switcher */}
+                  <div className="flex items-center gap-1 p-0.5 bg-slate-900 border border-slate-800 rounded-lg">
+                    <button
+                      type="button"
+                      onClick={() => setCatalogGridMode('grid4')}
+                      className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-colors ${
+                        catalogGridMode === 'grid4'
+                          ? 'bg-amber-400 text-slate-950 font-semibold shadow-sm'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                      title="Ver en cuadrículas pequeñas de 4"
+                    >
+                      <LayoutGrid className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Cuadrícula 4</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCatalogGridMode('comfort')}
+                      className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-colors ${
+                        catalogGridMode === 'comfort'
+                          ? 'bg-amber-400 text-slate-950 font-semibold shadow-sm'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                      title="Ver en cuadrícula amplia"
+                    >
+                      <Columns className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Amplia</span>
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {filteredCatalogBooks.length === 0 ? (
@@ -495,7 +530,11 @@ export default function App() {
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className={
+                  catalogGridMode === 'grid4'
+                    ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4'
+                    : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6'
+                }>
                   {filteredCatalogBooks.map((book) => (
                     <BookCard
                       key={book.id}
@@ -503,6 +542,7 @@ export default function App() {
                       onSelect={setSelectedBookForDetails}
                       onPreview={setSelectedBookForReader}
                       onDownload={setSelectedBookForCheckout}
+                      compact={catalogGridMode === 'grid4'}
                     />
                   ))}
                 </div>

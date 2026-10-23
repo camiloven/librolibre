@@ -4,7 +4,7 @@ import {
   BookOpen, Sparkles, Plus, Settings, Tag, ArrowDownToLine, 
   DollarSign, Trash2, Edit3, Download, Check, ShieldAlert, ShieldCheck,
   Building2, Smartphone, CreditCard, Lock, KeyRound, Copy, Camera,
-  Upload, Loader2, FileText
+  Upload, Loader2, FileText, Search, LayoutGrid, List, X
 } from 'lucide-react';
 
 interface AuthorStudioProps {
@@ -44,6 +44,8 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'books' | 'payments' | 'coupons' | 'history'>('books');
   const [filterType, setFilterType] = useState<'all' | 'liberated' | 'paid' | 'free'>('all');
+  const [studioViewMode, setStudioViewMode] = useState<'grid4' | 'table'>('grid4');
+  const [bookSearchQuery, setBookSearchQuery] = useState('');
   const [uploadingBookId, setUploadingBookId] = useState<string | null>(null);
 
   const handleAttachFileToBook = async (bookId: string, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -98,11 +100,23 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
   const totalRevenue = transactions.reduce((acc, t) => acc + (t.amount || 0), 0);
   const chile = authorProfile.paymentMethods.chile;
 
-  // Filtered books
+  // Filtered books with live search
   const filteredBooks = books.filter((b) => {
-    if (filterType === 'liberated') return b.isLiberated;
-    if (filterType === 'paid') return !b.isLiberated && b.pricingType === 'paid';
-    if (filterType === 'free') return b.pricingType === 'free';
+    if (filterType === 'liberated' && !b.isLiberated) return false;
+    if (filterType === 'paid' && (b.isLiberated || b.pricingType !== 'paid')) return false;
+    if (filterType === 'free' && b.pricingType !== 'free') return false;
+
+    if (bookSearchQuery.trim()) {
+      const q = bookSearchQuery.toLowerCase().trim();
+      const matches =
+        b.title.toLowerCase().includes(q) ||
+        b.author.toLowerCase().includes(q) ||
+        b.genre.toLowerCase().includes(q) ||
+        (b.tags && b.tags.some((t) => t.toLowerCase().includes(q))) ||
+        (b.fileType && b.fileType.toLowerCase().includes(q));
+      if (!matches) return false;
+    }
+
     return true;
   });
 
@@ -329,194 +343,396 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
       {/* TAB 1: BOOKS & ONE-CLICK LIBERATION */}
       {activeTab === 'books' && (
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400">Filtrar:</span>
-              <button
-                onClick={() => setFilterType('all')}
-                className={`px-2.5 py-1 text-xs rounded-md cursor-pointer ${
-                  filterType === 'all' ? 'bg-slate-800 text-white font-medium' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Todos ({books.length})
-              </button>
-              <button
-                onClick={() => setFilterType('liberated')}
-                className={`px-2.5 py-1 text-xs rounded-md cursor-pointer ${
-                  filterType === 'liberated' ? 'bg-emerald-950 text-emerald-300 font-medium' : 'text-slate-400 hover:text-emerald-300'
-                }`}
-              >
-                Liberados ({liberatedBooks})
-              </button>
-              <button
-                onClick={() => setFilterType('paid')}
-                className={`px-2.5 py-1 text-xs rounded-md cursor-pointer ${
-                  filterType === 'paid' ? 'bg-slate-800 text-amber-300 font-medium' : 'text-slate-400 hover:text-amber-300'
-                }`}
-              >
-                De Pago ({books.filter((b) => !b.isLiberated && b.pricingType === 'paid').length})
-              </button>
-
-              {onDeleteAllDemoBooks && books.some((b) => ['book-1', 'book-2', 'book-3', 'book-4'].includes(b.id)) && (
+          {/* Controls Bar: Search & View Switcher */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 bg-slate-900/80 border border-slate-800 rounded-xl">
+            {/* Live Search Input */}
+            <div className="relative flex-1 max-w-md">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={bookSearchQuery}
+                onChange={(e) => setBookSearchQuery(e.target.value)}
+                placeholder="Buscar por título, autor o género..."
+                className="w-full pl-9 pr-8 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400/60"
+              />
+              {bookSearchQuery && (
                 <button
                   type="button"
-                  onClick={onDeleteAllDemoBooks}
-                  className="px-2.5 py-1 text-xs rounded-md bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 cursor-pointer flex items-center gap-1 transition-colors"
-                  title="Eliminar los libros de demostración para que solo aparezcan tus libros reales"
+                  onClick={() => setBookSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                  title="Limpiar búsqueda"
                 >
-                  <Trash2 className="w-3 h-3" />
-                  <span>Limpiar Libros Demo</span>
+                  <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
 
-            <p className="text-xs text-slate-500">
-              💡 Pulsa "¡Liberar Gratis Ahora!" para liberar cualquier libro de inmediato, o "Cobrar" para revertirlo.
-            </p>
-          </div>
+            {/* Filter buttons & View switcher */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setFilterType('all')}
+                  className={`px-2.5 py-1.5 text-xs rounded-lg cursor-pointer transition-colors ${
+                    filterType === 'all' ? 'bg-slate-800 text-white font-medium border border-slate-700' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Todos ({books.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterType('liberated')}
+                  className={`px-2.5 py-1.5 text-xs rounded-lg cursor-pointer transition-colors ${
+                    filterType === 'liberated' ? 'bg-emerald-950 text-emerald-300 font-medium border border-emerald-800/60' : 'text-slate-400 hover:text-emerald-300'
+                  }`}
+                >
+                  Liberados ({liberatedBooks})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterType('paid')}
+                  className={`px-2.5 py-1.5 text-xs rounded-lg cursor-pointer transition-colors ${
+                    filterType === 'paid' ? 'bg-amber-950/60 text-amber-300 font-medium border border-amber-800/60' : 'text-slate-400 hover:text-amber-300'
+                  }`}
+                >
+                  De Pago ({books.filter((b) => !b.isLiberated && b.pricingType === 'paid').length})
+                </button>
 
-          {/* Books Table */}
-          <div className="rounded-xl border border-slate-800 bg-slate-900/60 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-950/80 text-slate-400 border-b border-slate-800 uppercase font-mono tracking-wider">
-                  <tr>
-                    <th className="py-3 px-4">Portada & Obra</th>
-                    <th className="py-3 px-4">Género / Archivo</th>
-                    <th className="py-3 px-4">Precio Oficial Chile</th>
-                    <th className="py-3 px-4">Estado de Liberación</th>
-                    <th className="py-3 px-4 text-center">Acción Inmediata</th>
-                    <th className="py-3 px-4 text-center">Archivo Digital</th>
-                    <th className="py-3 px-4 text-right">Descargas</th>
-                    <th className="py-3 px-4 text-right">Borrar (Solo Admin)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800 text-slate-300">
-                  {filteredBooks.map((b) => (
-                    <tr key={b.id} className="hover:bg-slate-850/50 transition-colors">
-                      {/* Book & Cover */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={b.coverUrl}
-                            alt={b.title}
-                            className="w-10 h-14 object-cover rounded bg-slate-950 shrink-0 border border-slate-800"
-                          />
-                          <div>
-                            <div className="font-serif font-bold text-sm text-white line-clamp-1">{b.title}</div>
-                            <div className="text-[11px] text-slate-400">Por {b.author}</div>
-                          </div>
-                        </div>
-                      </td>
+                {onDeleteAllDemoBooks && books.some((b) => ['book-1', 'book-2', 'book-3', 'book-4'].includes(b.id)) && (
+                  <button
+                    type="button"
+                    onClick={onDeleteAllDemoBooks}
+                    className="px-2.5 py-1.5 text-xs rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 cursor-pointer flex items-center gap-1 transition-colors"
+                    title="Eliminar libros de prueba para ver solo tus libros subidos"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span className="hidden sm:inline">Limpiar Demo</span>
+                  </button>
+                )}
+              </div>
 
-                      {/* Genre & Format */}
-                      <td className="py-3.5 px-4">
-                        <div>{b.genre}</div>
-                        <div className="font-mono text-[11px] text-slate-500">{b.fileType} · {b.fileSize}</div>
-                        {b.downloadUrl ? (
-                          <div className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-medium mt-1">
-                            <Check className="w-3 h-3 text-emerald-400" />
-                            <span>Archivo en la nube</span>
-                          </div>
-                        ) : (
-                          <div className="inline-flex items-center gap-1 text-[10px] text-amber-400 font-medium mt-1">
-                            <span>⚠️ Falta subir archivo</span>
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Price in CLP */}
-                      <td className="py-3.5 px-4 font-mono">
-                        {b.pricingType === 'free' ? (
-                          <span className="text-slate-400">Siempre Gratis</span>
-                        ) : b.pricingType === 'pwyw' ? (
-                          <span className="text-amber-400">Aporte (min {formatCurrency(b.allowPwywMin || 1000, 'CLP')})</span>
-                        ) : (
-                          <span className="text-white font-semibold">{formatCurrency(b.price, 'CLP')}</span>
-                        )}
-                      </td>
-
-                      {/* Liberation state */}
-                      <td className="py-3.5 px-4">
-                        {b.isLiberated ? (
-                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-950/70 border border-emerald-800 text-emerald-300 font-medium text-[11px]">
-                            <Sparkles className="w-3 h-3 text-emerald-400" />
-                            <span>LIBERADO GRATIS</span>
-                          </div>
-                        ) : b.pricingType === 'free' ? (
-                          <span className="text-slate-400 font-medium">Gratis permanente</span>
-                        ) : (
-                          <span className="text-slate-400 font-medium">Bloqueado a Pago</span>
-                        )}
-                      </td>
-
-                      {/* Instant Toggle Button (The main user requirement: "Cuando yo quiera liberarlos") */}
-                      <td className="py-3.5 px-4 text-center">
-                        {b.pricingType === 'free' ? (
-                          <span className="text-[11px] text-slate-500 italic">Es gratuito</span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => onToggleLiberate(b.id)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center justify-center gap-1.5 mx-auto shadow-sm ${
-                              b.isLiberated
-                                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30'
-                                : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold'
-                            }`}
-                            title={b.isLiberated ? 'Volver a cobrar este libro' : 'Liberar gratis inmediatamente para todos los lectores'}
-                          >
-                            <Sparkles className="w-3.5 h-3.5" />
-                            <span>{b.isLiberated ? 'Cobrar de nuevo' : '¡Liberar Gratis Ahora!'}</span>
-                          </button>
-                        )}
-                      </td>
-
-                      {/* Upload/Attach Original File */}
-                      <td className="py-3.5 px-4 text-center">
-                        <label className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 cursor-pointer transition-colors shadow-sm">
-                          {uploadingBookId === b.id ? (
-                            <>
-                              <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
-                              <span>Subiendo...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="w-3.5 h-3.5 text-amber-400" />
-                              <span>{b.downloadUrl ? 'Cambiar archivo' : 'Subir archivo'}</span>
-                            </>
-                          )}
-                          <input
-                            type="file"
-                            accept=".pdf,.epub,.mobi,.docx,.txt"
-                            disabled={uploadingBookId === b.id}
-                            onChange={(e) => handleAttachFileToBook(b.id, e)}
-                            className="hidden"
-                          />
-                        </label>
-                      </td>
-
-                      {/* Downloads */}
-                      <td className="py-3.5 px-4 text-right font-mono tabular-nums text-slate-200">
-                        {b.downloadCount.toLocaleString()}
-                      </td>
-
-                      {/* EXCLUSIVE ADMIN DELETE BUTTON (User Requirement) */}
-                      <td className="py-3.5 px-4 text-right">
-                        <button
-                          onClick={() => onRequestDeleteBook(b)}
-                          className="px-2.5 py-1.5 text-xs text-rose-400 hover:text-white hover:bg-rose-600/30 border border-rose-800/40 rounded-lg transition-colors cursor-pointer flex items-center gap-1 ml-auto"
-                          title="Borrar libro (Exclusivo Administrador)"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>Borrar</span>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              {/* View Layout Switcher (Cuadrícula 4 vs Tabla) */}
+              <div className="flex items-center gap-1 p-0.5 bg-slate-950 border border-slate-800 rounded-lg ml-auto">
+                <button
+                  type="button"
+                  onClick={() => setStudioViewMode('grid4')}
+                  className={`px-2.5 py-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-colors ${
+                    studioViewMode === 'grid4'
+                      ? 'bg-amber-400 text-slate-950 font-semibold shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Ver en cuadrículas pequeñas de 4"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span className="text-[11px]">Cuadrícula 4</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStudioViewMode('table')}
+                  className={`px-2.5 py-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-colors ${
+                    studioViewMode === 'table'
+                      ? 'bg-amber-400 text-slate-950 font-semibold shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Ver en tabla detallada"
+                >
+                  <List className="w-3.5 h-3.5" />
+                  <span className="text-[11px]">Tabla</span>
+                </button>
+              </div>
             </div>
           </div>
+
+          {filteredBooks.length === 0 ? (
+            <div className="p-12 text-center bg-slate-900/50 rounded-xl border border-slate-800">
+              <BookOpen className="w-10 h-10 text-slate-600 mx-auto mb-2" />
+              <p className="text-sm font-medium text-slate-300">No hay libros que coincidan con la búsqueda</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setBookSearchQuery('');
+                  setFilterType('all');
+                }}
+                className="mt-3 px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-amber-400 rounded-lg cursor-pointer"
+              >
+                Limpiar filtros
+              </button>
+            </div>
+          ) : studioViewMode === 'grid4' ? (
+            /* CUADRÍCULA PEQUEÑA DE 4 (Solicitud del usuario) */
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {filteredBooks.map((b) => (
+                <div
+                  key={b.id}
+                  className="group bg-slate-900 rounded-xl border border-slate-800 hover:border-slate-700 transition-all flex flex-col overflow-hidden shadow-lg hover:shadow-black/50"
+                >
+                  {/* Small Book Cover with Overlay Tags */}
+                  <div className="relative aspect-[3/4] w-full bg-slate-950 overflow-hidden">
+                    <img
+                      src={b.coverUrl}
+                      alt={b.title}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
+                      loading="lazy"
+                    />
+
+                    {/* Status Chip */}
+                    <div className="absolute top-2 left-2">
+                      {b.isLiberated ? (
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-950/90 border border-emerald-500/50 text-emerald-300 font-bold text-[10px] tracking-wide shadow-md flex items-center gap-1 backdrop-blur-sm">
+                          <Sparkles className="w-2.5 h-2.5" />
+                          <span>LIBERADO $0</span>
+                        </span>
+                      ) : b.pricingType === 'free' ? (
+                        <span className="px-2 py-0.5 rounded-md bg-amber-950/90 border border-amber-500/50 text-amber-300 font-bold text-[10px] tracking-wide shadow-md backdrop-blur-sm">
+                          GRATIS
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-md bg-slate-950/90 border border-slate-700 text-amber-300 font-mono font-bold text-[10px] tracking-wide shadow-md backdrop-blur-sm">
+                          {formatCurrency(b.price, 'CLP')}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Admin Delete Action */}
+                    <button
+                      type="button"
+                      onClick={() => onRequestDeleteBook(b)}
+                      className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-slate-950/80 border border-rose-500/40 text-rose-400 hover:text-white hover:bg-rose-600/60 flex items-center justify-center transition-colors shadow-md cursor-pointer"
+                      title="Eliminar libro"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Card Content */}
+                  <div className="p-3.5 flex-1 flex flex-col justify-between">
+                    <div>
+                      {/* Genre & Format */}
+                      <div className="text-[11px] text-slate-400 flex items-center gap-1.5 mb-1 truncate font-medium">
+                        <span className="text-amber-400 uppercase tracking-wider truncate">{b.genre}</span>
+                        <span aria-hidden="true" className="text-slate-600">·</span>
+                        <span className="shrink-0">{b.pageCount} pág</span>
+                        <span aria-hidden="true" className="text-slate-600">·</span>
+                        <span className="font-mono text-slate-400 shrink-0">{b.fileType}</span>
+                      </div>
+
+                      {/* Title & Author */}
+                      <h4
+                        className="font-serif font-bold text-sm text-white line-clamp-1 group-hover:text-amber-400 transition-colors"
+                        title={b.title}
+                      >
+                        {b.title}
+                      </h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">
+                        Por {b.author}
+                      </p>
+
+                      {/* Digital File Status */}
+                      <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+                        <div className="truncate">
+                          {b.downloadUrl ? (
+                            <span className="inline-flex items-center gap-1 text-emerald-400 font-medium truncate">
+                              <Check className="w-3 h-3 text-emerald-400 shrink-0" />
+                              <span className="truncate">{b.fileName || `${b.fileType} en nube`}</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-amber-400 font-medium truncate">
+                              <span>⚠️ Falta archivo</span>
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-slate-400 font-mono text-[10px] shrink-0 ml-1">
+                          {b.downloadCount.toLocaleString()} descargas
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Quick Management Buttons */}
+                    <div className="mt-3 pt-2.5 border-t border-slate-800/80 space-y-2">
+                      {/* One-Click Liberate Button */}
+                      {b.pricingType === 'free' ? (
+                        <div className="text-center py-1 text-[11px] text-slate-500 font-mono">
+                          Siempre gratuito
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => onToggleLiberate(b.id)}
+                          className={`w-full py-1.5 px-2.5 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center justify-center gap-1.5 shadow-sm ${
+                            b.isLiberated
+                              ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30'
+                              : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold'
+                          }`}
+                          title={b.isLiberated ? 'Hacer de pago nuevamente' : 'Liberar gratis para todos los lectores'}
+                        >
+                          <Sparkles className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{b.isLiberated ? 'Cobrar de nuevo' : '¡Liberar Gratis Ahora!'}</span>
+                        </button>
+                      )}
+
+                      {/* Upload / Replace Digital File */}
+                      <label className="w-full py-1.5 px-2.5 rounded-lg text-[11px] font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 cursor-pointer transition-colors flex items-center justify-center gap-1.5 shadow-sm">
+                        {uploadingBookId === b.id ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin text-amber-400 shrink-0" />
+                            <span className="truncate">Subiendo...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-3 h-3 text-amber-400 shrink-0" />
+                            <span className="truncate">{b.downloadUrl ? 'Cambiar archivo' : 'Subir archivo original'}</span>
+                          </>
+                        )}
+                        <input
+                          type="file"
+                          accept=".pdf,.epub,.mobi,.docx,.txt"
+                          disabled={uploadingBookId === b.id}
+                          onChange={(e) => handleAttachFileToBook(b.id, e)}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* TABLA DETALLADA ALTERNATIVA */
+            <div className="rounded-xl border border-slate-800 bg-slate-900/60 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-950/80 text-slate-400 border-b border-slate-800 uppercase font-mono tracking-wider">
+                    <tr>
+                      <th className="py-3 px-4">Portada & Obra</th>
+                      <th className="py-3 px-4">Género / Archivo</th>
+                      <th className="py-3 px-4">Precio Oficial Chile</th>
+                      <th className="py-3 px-4">Estado de Liberación</th>
+                      <th className="py-3 px-4 text-center">Acción Inmediata</th>
+                      <th className="py-3 px-4 text-center">Archivo Digital</th>
+                      <th className="py-3 px-4 text-right">Descargas</th>
+                      <th className="py-3 px-4 text-right">Borrar</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800 text-slate-300">
+                    {filteredBooks.map((b) => (
+                      <tr key={b.id} className="hover:bg-slate-850/50 transition-colors">
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={b.coverUrl}
+                              alt={b.title}
+                              className="w-10 h-14 object-cover rounded bg-slate-950 shrink-0 border border-slate-800"
+                            />
+                            <div>
+                              <div className="font-serif font-bold text-sm text-white line-clamp-1">{b.title}</div>
+                              <div className="text-[11px] text-slate-400">Por {b.author}</div>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <div>{b.genre}</div>
+                          <div className="font-mono text-[11px] text-slate-500">{b.fileType} · {b.fileSize}</div>
+                          {b.downloadUrl ? (
+                            <div className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-medium mt-1">
+                              <Check className="w-3 h-3 text-emerald-400" />
+                              <span>Archivo en la nube</span>
+                            </div>
+                          ) : (
+                            <div className="inline-flex items-center gap-1 text-[10px] text-amber-400 font-medium mt-1">
+                              <span>⚠️ Falta subir archivo</span>
+                            </div>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4 font-mono">
+                          {b.pricingType === 'free' ? (
+                            <span className="text-slate-400">Siempre Gratis</span>
+                          ) : b.pricingType === 'pwyw' ? (
+                            <span className="text-amber-400">Aporte (min {formatCurrency(b.allowPwywMin || 1000, 'CLP')})</span>
+                          ) : (
+                            <span className="text-white font-semibold">{formatCurrency(b.price, 'CLP')}</span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          {b.isLiberated ? (
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-950/70 border border-emerald-800 text-emerald-300 font-medium text-[11px]">
+                              <Sparkles className="w-3 h-3 text-emerald-400" />
+                              <span>LIBERADO GRATIS</span>
+                            </div>
+                          ) : b.pricingType === 'free' ? (
+                            <span className="text-slate-400 font-medium">Gratis permanente</span>
+                          ) : (
+                            <span className="text-slate-400 font-medium">Bloqueado a Pago</span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4 text-center">
+                          {b.pricingType === 'free' ? (
+                            <span className="text-[11px] text-slate-500 italic">Es gratuito</span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => onToggleLiberate(b.id)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center justify-center gap-1.5 mx-auto shadow-sm ${
+                                b.isLiberated
+                                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30'
+                                  : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold'
+                              }`}
+                              title={b.isLiberated ? 'Volver a cobrar este libro' : 'Liberar gratis inmediatamente para todos los lectores'}
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>{b.isLiberated ? 'Cobrar de nuevo' : '¡Liberar Gratis Ahora!'}</span>
+                            </button>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4 text-center">
+                          <label className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 cursor-pointer transition-colors shadow-sm">
+                            {uploadingBookId === b.id ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                                <span>Subiendo...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="w-3.5 h-3.5 text-amber-400" />
+                                <span>{b.downloadUrl ? 'Cambiar archivo' : 'Subir archivo'}</span>
+                              </>
+                            )}
+                            <input
+                              type="file"
+                              accept=".pdf,.epub,.mobi,.docx,.txt"
+                              disabled={uploadingBookId === b.id}
+                              onChange={(e) => handleAttachFileToBook(b.id, e)}
+                              className="hidden"
+                            />
+                          </label>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-right font-mono tabular-nums text-slate-200">
+                          {b.downloadCount.toLocaleString()}
+                        </td>
+
+                        <td className="py-3.5 px-4 text-right">
+                          <button
+                            onClick={() => onRequestDeleteBook(b)}
+                            className="px-2.5 py-1.5 text-xs text-rose-400 hover:text-white hover:bg-rose-600/30 border border-rose-800/40 rounded-lg transition-colors cursor-pointer flex items-center gap-1 ml-auto"
+                            title="Borrar libro (Exclusivo Administrador)"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Borrar</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
