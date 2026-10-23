@@ -31,10 +31,11 @@ import { PaymentSettingsModal } from './components/PaymentSettingsModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { DeleteBookConfirmModal } from './components/DeleteBookConfirmModal';
 import { EditAuthorProfileModal } from './components/EditAuthorProfileModal';
+import { BookshelfView } from './components/BookshelfView';
 import { 
   Sparkles, BookOpen, ShieldCheck, Heart, ArrowRight, 
   HelpCircle, CheckCircle, Feather, Download, Building2, Smartphone, CreditCard, Lock, Camera, Upload,
-  LayoutGrid, Columns
+  LayoutGrid, Columns, Library
 } from 'lucide-react';
 
 export default function App() {
@@ -61,7 +62,7 @@ export default function App() {
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('ALL');
-  const [catalogGridMode, setCatalogGridMode] = useState<'grid4' | 'comfort'>('grid4');
+  const [catalogGridMode, setCatalogGridMode] = useState<'bookshelf' | 'grid4' | 'comfort'>('bookshelf');
 
   // Floating Toast Notification
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
@@ -478,8 +479,21 @@ export default function App() {
                     </button>
                   )}
 
-                  {/* Grid Density Switcher */}
+                  {/* View Mode Switcher: Estantería (Moon+ Reader style) / Cuadrícula 4 / Amplia */}
                   <div className="flex items-center gap-1 p-0.5 bg-slate-900 border border-slate-800 rounded-lg">
+                    <button
+                      type="button"
+                      onClick={() => setCatalogGridMode('bookshelf')}
+                      className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-colors ${
+                        catalogGridMode === 'bookshelf'
+                          ? 'bg-amber-400 text-slate-950 font-semibold shadow-sm'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                      title="Ver en estantería de madera clásica (estilo lector digital)"
+                    >
+                      <Library className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Estantería</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => setCatalogGridMode('grid4')}
@@ -529,6 +543,14 @@ export default function App() {
                     Ver todos los libros
                   </button>
                 </div>
+              ) : catalogGridMode === 'bookshelf' ? (
+                /* ESTANTERÍA DE MADERA CLÁSICA (Moon+ Reader style) */
+                <BookshelfView
+                  books={filteredCatalogBooks}
+                  onSelectBook={setSelectedBookForDetails}
+                  onPreviewBook={setSelectedBookForReader}
+                  onDownloadBook={setSelectedBookForCheckout}
+                />
               ) : (
                 <div className={
                   catalogGridMode === 'grid4'
@@ -736,6 +758,22 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* Floating Reader Quick Action Button (FAB - Inspired by Moon+ Reader) */}
+      <button
+        type="button"
+        onClick={() => {
+          const targetBook = books.find((b) => b.isLiberated) || books[0];
+          if (targetBook) {
+            setSelectedBookForReader(targetBook);
+          }
+        }}
+        className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-[#cb6858] hover:bg-[#b85647] text-white flex items-center justify-center shadow-[0_8px_25px_rgba(203,104,88,0.55)] border-2 border-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+        title="Abrir lector digital rápido"
+        aria-label="Abrir lector digital rápido"
+      >
+        <BookOpen className="w-6 h-6" />
+      </button>
 
       {/* MODALS */}
       {/* 1. Admin Login Modal */}

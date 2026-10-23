@@ -4,8 +4,10 @@ import {
   BookOpen, Sparkles, Plus, Settings, Tag, ArrowDownToLine, 
   DollarSign, Trash2, Edit3, Download, Check, ShieldAlert, ShieldCheck,
   Building2, Smartphone, CreditCard, Lock, KeyRound, Copy, Camera,
-  Upload, Loader2, FileText, Search, LayoutGrid, List, X
+  Upload, Loader2, FileText, Search, LayoutGrid, List, X, Library
 } from 'lucide-react';
+import { BookshelfView } from './BookshelfView';
+import { downloadBookFile } from '../utils/fileDownloader';
 
 interface AuthorStudioProps {
   books: Book[];
@@ -44,7 +46,7 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'books' | 'payments' | 'coupons' | 'history'>('books');
   const [filterType, setFilterType] = useState<'all' | 'liberated' | 'paid' | 'free'>('all');
-  const [studioViewMode, setStudioViewMode] = useState<'grid4' | 'table'>('grid4');
+  const [studioViewMode, setStudioViewMode] = useState<'bookshelf' | 'grid4' | 'table'>('bookshelf');
   const [bookSearchQuery, setBookSearchQuery] = useState('');
   const [uploadingBookId, setUploadingBookId] = useState<string | null>(null);
 
@@ -411,8 +413,21 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
                 )}
               </div>
 
-              {/* View Layout Switcher (Cuadrícula 4 vs Tabla) */}
+              {/* View Layout Switcher (Estantería / Cuadrícula 4 / Tabla) */}
               <div className="flex items-center gap-1 p-0.5 bg-slate-950 border border-slate-800 rounded-lg ml-auto">
+                <button
+                  type="button"
+                  onClick={() => setStudioViewMode('bookshelf')}
+                  className={`px-2.5 py-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-colors ${
+                    studioViewMode === 'bookshelf'
+                      ? 'bg-amber-400 text-slate-950 font-semibold shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Ver en estantería de madera clásica"
+                >
+                  <Library className="w-3.5 h-3.5" />
+                  <span className="text-[11px]">Estantería</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => setStudioViewMode('grid4')}
@@ -421,7 +436,7 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
                       ? 'bg-amber-400 text-slate-950 font-semibold shadow-sm'
                       : 'text-slate-400 hover:text-white'
                   }`}
-                  title="Ver en cuadrículas pequeñas de 4"
+                  title="Ver en cuadrículas de 4"
                 >
                   <LayoutGrid className="w-3.5 h-3.5" />
                   <span className="text-[11px]">Cuadrícula 4</span>
@@ -458,6 +473,25 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
                 Limpiar filtros
               </button>
             </div>
+          ) : studioViewMode === 'bookshelf' ? (
+            /* ESTANTERÍA DE MADERA CLÁSICA */
+            <BookshelfView
+              books={filteredBooks}
+              onSelectBook={(book) => {
+                // Trigger preview or details
+              }}
+              onPreviewBook={(book) => {
+                // Reading preview
+              }}
+              onDownloadBook={(book) => {
+                downloadBookFile(book);
+              }}
+              isAuthorMode={true}
+              onToggleLiberate={onToggleLiberate}
+              onRequestDeleteBook={onRequestDeleteBook}
+              onAttachFile={handleAttachFileToBook}
+              uploadingBookId={uploadingBookId}
+            />
           ) : studioViewMode === 'grid4' ? (
             /* CUADRÍCULA PEQUEÑA DE 4 (Solicitud del usuario) */
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
