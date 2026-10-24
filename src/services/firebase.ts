@@ -200,6 +200,51 @@ export async function deleteAllDemoBooksFromFirestore(): Promise<void> {
 }
 
 /**
+ * Clean duplicate books in Cloud Firestore:
+ * If multiple books share the exact same normalized title, keeps the one with the uploaded file
+ * (or the most recent) and deletes the redundant duplicates from Firestore.
+ */
+export async function cleanDuplicateBooksInFirestore(): Promise<number> {
+  try {
+    const booksCol = collection(db, 'books');
+    const snapshot = await getDocs(booksCol);
+    const seenTitles = new Map<string, { id: string; hasFile: boolean; createdAt: string }>();
+    let deletedCount = 0;
+
+    for (const docSnap of snapshot.docs) {
+      const data = docSnap.data() as Book;
+      const rawTitle = (data.title || '').trim().toLowerCase();
+      const normTitle = rawTitle.replace(/[^a-záéíóúñ0-9]/g, '');
+      if (!normTitle) continue;
+
+      const hasFile = Boolean(data.downloadUrl);
+      const createdAt = data.createdAt || '';
+
+      if (seenTitles.has(normTitle)) {
+        const existing = seenTitles.get(normTitle)!;
+        if (hasFile && !existing.hasFile) {
+          // Current has a file, existing doesn't: delete existing
+          await deleteDoc(doc(db, 'books', existing.id));
+          seenTitles.set(normTitle, { id: docSnap.id, hasFile, createdAt });
+          deletedCount++;
+        } else {
+          // Delete current duplicate
+          await deleteDoc(doc(db, 'books', docSnap.id));
+          deletedCount++;
+        }
+      } else {
+        seenTitles.set(normTitle, { id: docSnap.id, hasFile, createdAt });
+      }
+    }
+
+    return deletedCount;
+  } catch (err) {
+    console.warn('Error cleaning duplicates in Firestore:', err);
+    return 0;
+  }
+}
+
+/**
  * Update book's attached downloadable file in Cloud Firestore
  */
 export async function updateBookFileInFirestore(

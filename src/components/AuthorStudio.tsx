@@ -4,7 +4,7 @@ import {
   BookOpen, Sparkles, Plus, Settings, Tag, ArrowDownToLine, 
   DollarSign, Trash2, Edit3, Download, Check, ShieldAlert, ShieldCheck,
   Building2, Smartphone, CreditCard, Lock, KeyRound, Copy, Camera,
-  Upload, Loader2, FileText, Search, LayoutGrid, List, X, Library
+  Upload, Loader2, FileText, Search, LayoutGrid, List, X, Library, RefreshCw
 } from 'lucide-react';
 import { BookshelfView } from './BookshelfView';
 import { downloadBookFile } from '../utils/fileDownloader';
@@ -24,6 +24,7 @@ interface AuthorStudioProps {
   onResetCatalog: () => void;
   onLogoutAdmin: () => void;
   onDeleteAllDemoBooks?: () => void;
+  onCleanDuplicates?: () => void;
   onUpdateBookFile?: (bookId: string, fileInfo: { downloadUrl: string; fileName: string; fileSize: string; fileType: string }) => Promise<void>;
 }
 
@@ -42,6 +43,7 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
   onResetCatalog,
   onLogoutAdmin,
   onDeleteAllDemoBooks,
+  onCleanDuplicates,
   onUpdateBookFile,
 }) => {
   const [activeTab, setActiveTab] = useState<'books' | 'payments' | 'coupons' | 'history'>('books');
@@ -409,6 +411,18 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
                   >
                     <Trash2 className="w-3 h-3" />
                     <span className="hidden sm:inline">Limpiar Demo</span>
+                  </button>
+                )}
+
+                {onCleanDuplicates && (
+                  <button
+                    type="button"
+                    onClick={onCleanDuplicates}
+                    className="px-2.5 py-1.5 text-xs rounded-lg bg-amber-950/40 hover:bg-amber-900/60 text-amber-300 border border-amber-800/50 cursor-pointer flex items-center gap-1 transition-colors"
+                    title="Detectar y eliminar libros repetidos en la base de datos"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span className="hidden sm:inline">Limpiar Duplicados</span>
                   </button>
                 )}
               </div>

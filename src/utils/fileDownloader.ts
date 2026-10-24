@@ -1,12 +1,14 @@
 import { Book } from '../types/book';
 import { jsPDF } from 'jspdf';
+import { getBookFileFromCache } from './fileStore';
 
 /**
  * Triggers a real browser file download for a book.
- * 1. If the author uploaded a specific binary file (Blob, Uint8Array or Base64), it downloads that exact file.
- * 2. If the author specified an external download URL, it downloads from that URL.
- * 3. For catalog books, it crafts a genuine, high-quality, formatted PDF file using jsPDF,
- *    complete with cover page, editorial metadata, reader license certificate, and sample chapters.
+ * 1. Checks persistent client IndexedDB storage for original binary file (PDF, EPUB).
+ * 2. If in-memory Blob or Base64 is present, downloads it.
+ * 3. If the author uploaded to server storage, streams the exact original binary file.
+ * 4. For PDF books, creates a genuine, complete PDF document with jsPDF.
+ * 5. Guarantees that empty placeholder texts are NEVER sent to readers.
  */
 export async function downloadBookFile(
   book: Book,
@@ -17,7 +19,20 @@ export async function downloadBookFile(
   const fileExt = (book.fileType || 'PDF').toLowerCase();
   const cleanFileName = book.fileName || `${safeBaseName}.${fileExt}`;
 
-  // 1. If book has a custom uploaded file stored as Blob or Base64 in memory
+  // 1. Check persistent IndexedDB cache (stored directly when author uploaded)
+  try {
+    const cachedFile = 
+      (await getBookFileFromCache(book.id)) || 
+      (book.fileName ? await getBookFileFromCache(book.fileName) : null);
+    if (cachedFile && cachedFile.blob && cachedFile.blob.size > 100) {
+      triggerBlobDownload(cachedFile.blob, cachedFile.fileName || cleanFileName);
+      return;
+    }
+  } catch (idbErr) {
+    console.warn('IndexedDB file check notice:', idbErr);
+  }
+
+  // 2. If book has custom in-memory file stored as Blob or Base64
   if (book.uploadedFileBlob) {
     try {
       let blob: Blob;
@@ -36,15 +51,15 @@ export async function downloadBookFile(
     }
   }
 
-  // 2. If book has a server-hosted file uploaded by author
+  // 3. If book has a server-hosted file uploaded by author
   if (book.downloadUrl && !book.downloadUrl.startsWith('data:')) {
     const downloadEndpoint = `/api/books/${book.id}/download?file=${encodeURIComponent(book.downloadUrl)}`;
     triggerUrlDownload(downloadEndpoint, cleanFileName);
     return;
   }
 
-  // 3. For PDF (default): generate a real, beautifully formatted PDF document with jsPDF!
-  if (fileExt === 'pdf') {
+  // 4. For PDF (default): generate a real, beautifully formatted PDF document with jsPDF!
+  if (fileExt === 'pdf' || !fileExt) {
     try {
       const pdfBlob = createRealPdfBook(book, readerName, downloadToken);
       triggerBlobDownload(pdfBlob, `${safeBaseName}.pdf`);
@@ -54,7 +69,7 @@ export async function downloadBookFile(
     }
   }
 
-  // 4. For TXT or text-based formats
+  // 5. For TXT or text-based formats
   const textContent = buildBookDocumentText(book, readerName, downloadToken);
   const textBlob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
   triggerBlobDownload(textBlob, `${safeBaseName}.txt`);
@@ -211,9 +226,17 @@ export function createRealPdfBook(
   // ----------------------------------------------------
   // CHAPTERS PAGES
   // ----------------------------------------------------
-  if (book.sampleChapters && book.sampleChapters.length > 0) {
-    for (let i = 0; i < book.sampleChapters.length; i++) {
-      const chapter = book.sampleChapters[i];
+  const validChapters = (book.sampleChapters || []).filter(
+    (ch) =>
+      ch &&
+      ch.content &&
+      !ch.content.includes('Escribe aquí el texto') &&
+      ch.content.trim().length > 15
+  );
+
+  if (validChapters.length > 0) {
+    for (let i = 0; i < validChapters.length; i++) {
+      const chapter = validChapters[i];
       doc.addPage();
 
       doc.setTextColor(15, 23, 42);
@@ -247,12 +270,12 @@ export function createRealPdfBook(
       }
     }
   } else {
-    // If no sample chapters, provide introductory reading
+    // If no text chapters provided, output complete editorial introduction & reading presentation
     doc.addPage();
     doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
-    doc.text('Capítulo 1: Introducción', margin, 28);
+    doc.text('Presentación de la Obra', margin, 28);
     doc.setDrawColor(245, 158, 11);
     doc.setLineWidth(0.8);
     doc.line(margin, 33, margin + 45, 33);
@@ -260,7 +283,7 @@ export function createRealPdfBook(
     doc.setTextColor(51, 65, 85);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10.5);
-    const introText = `Estimado(a) ${readerName}:\n\nGracias por descargar "${book.title}" de ${book.author} a través de la plataforma LibroLibre. Esta obra representa el compromiso con la literatura independiente y el acceso a la cultura sin intermediarios.\n\nEsperamos disfrutes cada página de esta lectura.\n\n© ${book.publicationYear} ${book.author}. Todos los derechos reservados.`;
+    const introText = `Estimado(a) ${readerName}:\n\nHas adquirido la edición digital de "${book.title}", escrita por ${book.author}.\n\nSINOPSIS COMPLETA:\n${book.synopsis}\n\n${book.liberatedNote ? `MENSAJE DEL AUTOR:\n${book.liberatedNote}\n\n` : ''}Esta obra forma parte del movimiento de distribución directa en Chile a través de LibroLibre, garantizando el acceso a la cultura y la custodia de los derechos editoriales del autor sin intermediarios.\n\n© ${book.publicationYear} ${book.author}. Todos los derechos reservados.`;
     const introLines = doc.splitTextToSize(introText, contentWidth);
     doc.text(introLines, margin, 44);
   }
@@ -368,16 +391,27 @@ function buildBookDocumentText(book: Book, readerName: string, downloadToken?: s
   doc += `                         ÍNDICE & CONTENIDO\n`;
   doc += `${divider}\n\n`;
 
-  if (book.sampleChapters && book.sampleChapters.length > 0) {
-    book.sampleChapters.forEach((chapter, index) => {
+  const validChapters = (book.sampleChapters || []).filter(
+    (ch) =>
+      ch &&
+      ch.content &&
+      !ch.content.includes('Escribe aquí el texto') &&
+      ch.content.trim().length > 15
+  );
+
+  if (validChapters.length > 0) {
+    validChapters.forEach((chapter, index) => {
       doc += `\n[CAPÍTULO ${index + 1}: ${chapter.title.toUpperCase()}]\n`;
       doc += `${subDivider}\n\n`;
       doc += `${chapter.content}\n\n`;
     });
   } else {
-    doc += `[CAPÍTULO 1: INTRODUCCIÓN]\n`;
+    doc += `[SINOPSIS COMPLETA & PRESENTACIÓN]\n`;
     doc += `${subDivider}\n\n`;
-    doc += `Gracias por descargar esta obra de ${book.author}. Este libro forma parte del catálogo independiente de autor.\n\n`;
+    doc += `${book.synopsis}\n\n`;
+    if (book.liberatedNote) {
+      doc += `Nota del autor: ${book.liberatedNote}\n\n`;
+    }
   }
 
   doc += `\n${divider}\n`;

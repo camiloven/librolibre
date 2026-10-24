@@ -14,6 +14,7 @@ import {
   saveBookToFirestore,
   deleteBookFromFirestore,
   deleteAllDemoBooksFromFirestore,
+  cleanDuplicateBooksInFirestore,
   updateBookFileInFirestore,
   toggleLiberationInFirestore,
   incrementDownloadInFirestore,
@@ -73,14 +74,58 @@ export default function App() {
     }, 4500);
   };
 
+  // Helper to deduplicate books in memory by ID and normalized title
+  const deduplicateBookList = (bookList: Book[]): Book[] => {
+    const seenIds = new Set<string>();
+    const seenTitles = new Map<string, Book>();
+    const unique: Book[] = [];
+
+    for (const b of bookList) {
+      if (!b || !b.id || seenIds.has(b.id)) continue;
+
+      const normTitle = (b.title || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-záéíóúñ0-9]/g, '');
+
+      if (!normTitle) {
+        seenIds.add(b.id);
+        unique.push(b);
+        continue;
+      }
+
+      if (seenTitles.has(normTitle)) {
+        const existing = seenTitles.get(normTitle)!;
+        // Prefer the version that has a real downloadUrl or uploaded file
+        if (!existing.downloadUrl && b.downloadUrl) {
+          const idx = unique.findIndex((item) => item.id === existing.id);
+          if (idx !== -1) {
+            unique[idx] = b;
+            seenIds.delete(existing.id);
+            seenIds.add(b.id);
+            seenTitles.set(normTitle, b);
+          }
+        }
+        continue;
+      }
+
+      seenIds.add(b.id);
+      seenTitles.set(normTitle, b);
+      unique.push(b);
+    }
+
+    return unique;
+  };
+
   // REAL-TIME FIRESTORE SYNCHRONIZATION
   // Connects dev app, shared preview URL, and any device in real-time!
   useEffect(() => {
     // 1. Subscribe to Cloud Firestore books collection (Real-time updates)
     const unsubBooks = subscribeToBooks((cloudBooks) => {
       if (Array.isArray(cloudBooks)) {
-        setBooks(cloudBooks);
-        saveBooks(cloudBooks);
+        const cleanBooks = deduplicateBookList(cloudBooks);
+        setBooks(cleanBooks);
+        saveBooks(cleanBooks);
       }
     });
 
@@ -95,7 +140,10 @@ export default function App() {
     // Fallback: server disk check
     fetchBooksFromServer().then((srvBooks) => {
       if (srvBooks && srvBooks.length > 0) {
-        setBooks((current) => current.length > 0 ? current : srvBooks);
+        setBooks((current) => {
+          const combined = current.length > 0 ? current : srvBooks;
+          return deduplicateBookList(combined);
+        });
       }
     });
 
@@ -167,6 +215,17 @@ export default function App() {
       return b.genre === selectedGenre;
     });
   }, [books, searchQuery, selectedGenre]);
+
+  // Prevents repeating books: if a book is already featured in the top spotlight, exclude it from the grid below
+  const isSpotlightActive = liberatedBooks.length > 0 && selectedGenre !== 'LIBERATED' && !searchQuery;
+  const spotlightIds = useMemo(() => new Set(liberatedBooks.slice(0, 4).map((b) => b.id)), [liberatedBooks]);
+
+  const catalogDisplayBooks = useMemo(() => {
+    if (isSpotlightActive && selectedGenre === 'ALL') {
+      return filteredCatalogBooks.filter((b) => !spotlightIds.has(b.id));
+    }
+    return filteredCatalogBooks;
+  }, [filteredCatalogBooks, isSpotlightActive, selectedGenre, spotlightIds]);
 
   // CORE FEATURE: Toggle Liberation Status for a Book (One-click)
   const handleToggleLiberate = async (bookId: string) => {
@@ -286,6 +345,26 @@ export default function App() {
     }
   };
 
+  // Clean duplicate books in Cloud Firestore
+  const handleCleanDuplicates = async () => {
+    if (!isAdmin) {
+      setIsAdminLoginOpen(true);
+      return;
+    }
+    try {
+      const count = await cleanDuplicateBooksInFirestore();
+      setBooks((prev) => deduplicateBookList(prev));
+      if (count > 0) {
+        showToast(`¡Se eliminaron ${count} libros duplicados de la base de datos!`);
+      } else {
+        showToast('No se encontraron libros duplicados en la base de datos.');
+      }
+    } catch (e: any) {
+      console.warn('Error cleaning duplicates:', e);
+      showToast('Error al limpiar duplicados: ' + (e?.message || ''), 'error');
+    }
+  };
+
   // Increment download count after successful checkout/download
   const handleDownloadCompleted = (bookId: string) => {
     setBooks((prev) =>
@@ -390,6 +469,7 @@ export default function App() {
             onResetCatalog={handleResetCatalog}
             onLogoutAdmin={handleAdminLogout}
             onDeleteAllDemoBooks={handleDeleteAllDemoBooks}
+            onCleanDuplicates={handleCleanDuplicates}
             onUpdateBookFile={handleUpdateBookFile}
           />
         ) : (
@@ -451,118 +531,121 @@ export default function App() {
             )}
 
             {/* MAIN CATALOG GRID */}
-            <section id="catalog-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                <div>
-                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-serif font-bold text-white">
-                    {selectedGenre === 'ALL'
-                      ? 'Catálogo Disponible en Chile'
-                      : selectedGenre === 'LIBERATED'
-                      ? 'Libros Liberados & Sin Costo'
-                      : `Categoría: ${selectedGenre}`}
-                  </h2>
-                  <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                    Precios expresados en Pesos Chilenos (CLP) · Libros custodiados permanentemente por el autor
-                  </p>
-                </div>
+            {(!isSpotlightActive || catalogDisplayBooks.length > 0 || searchQuery || selectedGenre !== 'ALL') && (
+              <section id="catalog-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <div>
+                    <h2 className="text-xl sm:text-2xl lg:text-3xl font-serif font-bold text-white">
+                      {selectedGenre === 'ALL' && isSpotlightActive
+                        ? 'Más Obras del Catálogo'
+                        : selectedGenre === 'ALL'
+                        ? 'Catálogo Disponible en Chile'
+                        : selectedGenre === 'LIBERATED'
+                        ? 'Libros Liberados & Sin Costo'
+                        : `Categoría: ${selectedGenre}`}
+                    </h2>
+                    <p className="text-xs sm:text-sm text-slate-400 mt-1">
+                      Precios expresados en Pesos Chilenos (CLP) · Libros custodiados permanentemente por el autor
+                    </p>
+                  </div>
 
-                <div className="flex items-center gap-3">
-                  {(selectedGenre !== 'ALL' || searchQuery) && (
-                    <button
-                      onClick={() => {
-                        setSelectedGenre('ALL');
-                        setSearchQuery('');
-                      }}
-                      className="text-xs font-medium text-amber-400 hover:text-amber-300 cursor-pointer"
-                    >
-                      Restablecer filtros
-                    </button>
-                  )}
+                  <div className="flex items-center gap-3">
+                    {(selectedGenre !== 'ALL' || searchQuery) && (
+                      <button
+                        onClick={() => {
+                          setSelectedGenre('ALL');
+                          setSearchQuery('');
+                        }}
+                        className="text-xs font-medium text-amber-400 hover:text-amber-300 cursor-pointer"
+                      >
+                        Restablecer filtros
+                      </button>
+                    )}
 
-                  {/* View Mode Switcher: Estantería (Moon+ Reader style) / Cuadrícula 4 / Amplia */}
-                  <div className="flex items-center gap-1 p-0.5 bg-slate-900 border border-slate-800 rounded-lg">
-                    <button
-                      type="button"
-                      onClick={() => setCatalogGridMode('bookshelf')}
-                      className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-colors ${
-                        catalogGridMode === 'bookshelf'
-                          ? 'bg-amber-400 text-slate-950 font-semibold shadow-sm'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                      title="Ver en estantería de madera clásica (estilo lector digital)"
-                    >
-                      <Library className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Estantería</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCatalogGridMode('grid4')}
-                      className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-colors ${
-                        catalogGridMode === 'grid4'
-                          ? 'bg-amber-400 text-slate-950 font-semibold shadow-sm'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                      title="Ver en cuadrículas pequeñas de 4"
-                    >
-                      <LayoutGrid className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Cuadrícula 4</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCatalogGridMode('comfort')}
-                      className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-colors ${
-                        catalogGridMode === 'comfort'
-                          ? 'bg-amber-400 text-slate-950 font-semibold shadow-sm'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                      title="Ver en cuadrícula amplia"
-                    >
-                      <Columns className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Amplia</span>
-                    </button>
+                    {/* View Mode Switcher: Estantería (Moon+ Reader style) / Cuadrícula 4 / Amplia */}
+                    <div className="flex items-center gap-1 p-0.5 bg-slate-900 border border-slate-800 rounded-lg">
+                      <button
+                        type="button"
+                        onClick={() => setCatalogGridMode('bookshelf')}
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-colors ${
+                          catalogGridMode === 'bookshelf'
+                            ? 'bg-amber-400 text-slate-950 font-semibold shadow-sm'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                        title="Ver en estantería de madera clásica (estilo lector digital)"
+                      >
+                        <Library className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Estantería</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCatalogGridMode('grid4')}
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-colors ${
+                          catalogGridMode === 'grid4'
+                            ? 'bg-amber-400 text-slate-950 font-semibold shadow-sm'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                        title="Ver en cuadrículas pequeñas de 4"
+                      >
+                        <LayoutGrid className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Cuadrícula 4</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCatalogGridMode('comfort')}
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-colors ${
+                          catalogGridMode === 'comfort'
+                            ? 'bg-amber-400 text-slate-950 font-semibold shadow-sm'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                        title="Ver en cuadrícula amplia"
+                      >
+                        <Columns className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Amplia</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {filteredCatalogBooks.length === 0 ? (
-                <div className="text-center py-16 px-4 bg-slate-900/50 rounded-2xl border border-slate-800">
-                  <BookOpen className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-                  <h3 className="text-base font-serif font-bold text-slate-200">
-                    No se encontraron libros con los criterios seleccionados
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                    Prueba buscando por otra temática o restablece la búsqueda.
-                  </p>
-                  <button
-                    onClick={() => {
-                      setSearchQuery('');
-                      setSelectedGenre('ALL');
-                    }}
-                    className="mt-4 px-4 py-2 text-xs font-semibold bg-amber-400 text-slate-950 rounded-lg cursor-pointer"
-                  >
-                    Ver todos los libros
-                  </button>
-                </div>
-              ) : catalogGridMode === 'bookshelf' ? (
-                /* ESTANTERÍA DE MADERA CLÁSICA (Moon+ Reader style) */
-                <BookshelfView
-                  books={filteredCatalogBooks}
-                  onSelectBook={setSelectedBookForDetails}
-                  onPreviewBook={setSelectedBookForReader}
-                  onDownloadBook={setSelectedBookForCheckout}
-                />
-              ) : (
-                <div className={
-                  catalogGridMode === 'grid4'
-                    ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4'
-                    : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6'
-                }>
-                  {filteredCatalogBooks.map((book) => (
-                    <BookCard
-                      key={book.id}
-                      book={book}
-                      onSelect={setSelectedBookForDetails}
-                      onPreview={setSelectedBookForReader}
+                {catalogDisplayBooks.length === 0 ? (
+                  <div className="text-center py-16 px-4 bg-slate-900/50 rounded-2xl border border-slate-800">
+                    <BookOpen className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                    <h3 className="text-base font-serif font-bold text-slate-200">
+                      No se encontraron libros con los criterios seleccionados
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                      Prueba buscando por otra temática o restablece la búsqueda.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setSearchQuery('');
+                        setSelectedGenre('ALL');
+                      }}
+                      className="mt-4 px-4 py-2 text-xs font-semibold bg-amber-400 text-slate-950 rounded-lg cursor-pointer"
+                    >
+                      Ver todos los libros
+                    </button>
+                  </div>
+                ) : catalogGridMode === 'bookshelf' ? (
+                  /* ESTANTERÍA DE MADERA CLÁSICA (Moon+ Reader style) */
+                  <BookshelfView
+                    books={catalogDisplayBooks}
+                    onSelectBook={setSelectedBookForDetails}
+                    onPreviewBook={setSelectedBookForReader}
+                    onDownloadBook={setSelectedBookForCheckout}
+                  />
+                ) : (
+                  <div className={
+                    catalogGridMode === 'grid4'
+                      ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4'
+                      : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6'
+                  }>
+                    {catalogDisplayBooks.map((book) => (
+                      <BookCard
+                        key={book.id}
+                        book={book}
+                        onSelect={setSelectedBookForDetails}
+                        onPreview={setSelectedBookForReader}
                       onDownload={setSelectedBookForCheckout}
                       compact={catalogGridMode === 'grid4'}
                     />
@@ -570,6 +653,7 @@ export default function App() {
                 </div>
               )}
             </section>
+          )}
 
             {/* CHILEAN PAYMENTS SHOWCASE SECTION */}
             <section id="chile-payments" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

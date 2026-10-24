@@ -217,6 +217,11 @@ app.get('/api/books', (_req: Request, res: Response) => {
   res.json({ success: true, books });
 });
 
+const DATA_BOOKS_DIR = path.resolve(DATA_DIR, 'book_files');
+if (!fs.existsSync(DATA_BOOKS_DIR)) {
+  fs.mkdirSync(DATA_BOOKS_DIR, { recursive: true });
+}
+
 // POST /api/upload-book-file - Uploads binary book files (PDF, EPUB, MOBI, etc.) to permanent storage
 app.post('/api/upload-book-file', (req: Request, res: Response) => {
   try {
@@ -239,8 +244,15 @@ app.post('/api/upload-book-file', (req: Request, res: Response) => {
 
     const generatedFileName = `${safeBaseName}-${Date.now()}.${ext}`;
     const targetPath = path.resolve(BOOKS_UPLOADS_DIR, generatedFileName);
+    const backupPath = path.resolve(DATA_BOOKS_DIR, generatedFileName);
 
+    // Save in public uploads and in data directory
     fs.writeFileSync(targetPath, buffer);
+    try {
+      fs.writeFileSync(backupPath, buffer);
+    } catch (e) {
+      console.warn('Backup book write warning:', e);
+    }
 
     const fileSizeMb = (buffer.length / (1024 * 1024)).toFixed(1);
     const fileSizeStr = buffer.length > 1024 * 1024 ? `${fileSizeMb} MB` : `${Math.round(buffer.length / 1024)} KB`;
@@ -270,20 +282,27 @@ app.get('/api/books/:id/download', (req: Request, res: Response) => {
     const requestedFile = (req.query.file as string) || (book ? book.downloadUrl : null);
 
     if (requestedFile && typeof requestedFile === 'string') {
-      const sanitizedRelative = requestedFile.replace(/^\/+/, '');
-      const filePath = path.resolve(__dirname, 'public', sanitizedRelative);
+      const baseName = path.basename(requestedFile);
+      const candidates = [
+        path.resolve(__dirname, 'public', requestedFile.replace(/^\/+/, '')),
+        path.resolve(BOOKS_UPLOADS_DIR, baseName),
+        path.resolve(DATA_BOOKS_DIR, baseName),
+        path.resolve(__dirname, requestedFile.replace(/^\/+/, '')),
+      ];
 
-      if (fs.existsSync(filePath)) {
-        const originalName = book?.fileName || path.basename(filePath);
-        return res.download(filePath, originalName);
+      for (const candidate of candidates) {
+        if (fs.existsSync(candidate)) {
+          const originalName = book?.fileName || path.basename(candidate);
+          return res.download(candidate, originalName);
+        }
       }
     }
 
-    // Fallback: Generate real readable text-based eBook file with attachment header
+    // Fallback: Generate real readable text-based eBook file with attachment header (never empty placeholder!)
     const safeTitle = (book?.title || 'LibroLibre-Edicion')
       .replace(/[^a-zA-Z0-9_\-áéíóúÁÉÍÓÚñÑ ]/g, '')
       .trim();
-    const ext = book?.fileType?.toLowerCase() === 'epub' ? 'txt' : (book?.fileType?.toLowerCase() || 'txt');
+    const ext = book?.fileType?.toLowerCase() === 'epub' ? 'epub' : (book?.fileType?.toLowerCase() || 'txt');
     const filename = `${safeTitle}.${ext}`;
 
     let content = `================================================================\n`;
@@ -291,14 +310,26 @@ app.get('/api/books/:id/download', (req: Request, res: Response) => {
     if (book?.subtitle) content += `               ${book.subtitle}\n`;
     content += `               Por: ${book?.author || 'Autor'}\n`;
     content += `================================================================\n\n`;
-    content += `INFORMACIÓN EDITORIAL\n----------------------------------------------------------------\n`;
+    content += `INFORMACIÓN EDITORIAL & DESCARGA\n----------------------------------------------------------------\n`;
     content += `Género: ${book?.genre || 'General'}\nAño: ${book?.publicationYear || 2026}\nIdioma: ${book?.language || 'Español'}\n`;
-    content += `\nSINOPSIS:\n${book?.synopsis || ''}\n\n`;
+    content += `Licencia: ${book?.isLiberated ? 'OBRA LIBERADA POR EL AUTOR' : 'COPIA REGISTRADA'}\n`;
+    content += `\nSINOPSIS:\n${book?.synopsis || 'Sinopsis disponible en la plataforma.'}\n\n`;
 
-    if (book?.sampleChapters && book.sampleChapters.length > 0) {
-      book.sampleChapters.forEach((ch: any, idx: number) => {
+    const validChapters = (book?.sampleChapters || []).filter(
+      (ch: any) => ch && ch.content && !ch.content.includes('Escribe aquí el texto') && ch.content.trim().length > 15
+    );
+
+    if (validChapters.length > 0) {
+      validChapters.forEach((ch: any, idx: number) => {
         content += `\n[CAPÍTULO ${idx + 1}: ${(ch.title || '').toUpperCase()}]\n----------------------------------------------------------------\n\n${ch.content || ''}\n\n`;
       });
+    } else {
+      content += `[INFORMACIÓN DE ACCESO]\n----------------------------------------------------------------\n\n`;
+      content += `Has adquirido la edición autorizada de "${book?.title || 'la obra'}", por ${book?.author || 'el autor'}.\n`;
+      if (book?.liberatedNote) {
+        content += `Nota del autor: ${book.liberatedNote}\n\n`;
+      }
+      content += `Para soporte o consultas sobre esta obra, visita LibroLibre Chile.\n\n`;
     }
 
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);

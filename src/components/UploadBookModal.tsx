@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { extractCoverFromPdf, generateTextBookCover } from '../utils/pdfCoverExtractor';
 import { compressImage } from '../utils/imageCompressor';
+import { saveBookFileToCache } from '../utils/fileStore';
 
 interface UploadBookModalProps {
   onClose: () => void;
@@ -51,14 +52,8 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
   const [coverSource, setCoverSource] = useState<'auto-pdf' | 'manual' | 'generated' | 'none'>('none');
   const coverInputRef = useRef<HTMLInputElement>(null);
 
-  // Sample Chapters
-  const [chapters, setChapters] = useState<Chapter[]>([
-    {
-      id: 'ch-1',
-      title: 'Capítulo 1: El Comienzo',
-      content: 'Escribe aquí el texto del primer capítulo o prólogo para que los lectores puedan leer un adelanto en línea antes de descargarlo...'
-    }
-  ]);
+  // Sample Chapters (Initialized empty so dummy placeholder text is never published)
+  const [chapters, setChapters] = useState<Chapter[]>([]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -201,19 +196,35 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
   };
 
   const removeChapter = (index: number) => {
-    if (chapters.length <= 1) return;
     setChapters(chapters.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
       alert('Por favor ingresa un título para el libro.');
       return;
     }
 
+    if (isUploadingFile) {
+      alert('El archivo del libro aún se está subiendo. Por favor espera a que finalice para garantizar la descarga completa.');
+      return;
+    }
+
+    const bookId = `book-${Date.now()}`;
+
+    // Cache the original file in client IndexedDB permanently so it can never be lost
+    if (uploadedFile) {
+      try {
+        await saveBookFileToCache(bookId, uploadedFile, uploadedFile.name);
+        await saveBookFileToCache(uploadedFile.name, uploadedFile, uploadedFile.name);
+      } catch (err) {
+        console.warn('Could not cache file in IndexedDB:', err);
+      }
+    }
+
     const newBook: Book = {
-      id: `book-${Date.now()}`,
+      id: bookId,
       title: title.trim(),
       subtitle: subtitle.trim() || undefined,
       author: author.trim() || 'Autor',
@@ -234,7 +245,7 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
       fileName: uploadedFile?.name,
       downloadUrl: downloadUrl || undefined,
       uploadedFileBlob: uploadedFile || undefined,
-      sampleChapters: chapters.filter(c => c.title.trim() && c.content.trim()),
+      sampleChapters: chapters.filter(c => c.title.trim() && c.content.trim() && !c.content.includes('Escribe aquí el texto')),
       rating: 5.0,
       reviewCount: 0,
       createdAt: new Date().toISOString().split('T')[0],
@@ -709,7 +720,7 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Capítulo de Muestra (Lectura en línea)
+                Capítulo de Muestra (Lectura en línea - Opcional)
               </h4>
               <button
                 type="button"
@@ -717,39 +728,56 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
                 className="text-xs font-medium text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Añadir otro capítulo</span>
+                <span>Añadir fragmento web</span>
               </button>
             </div>
 
-            {chapters.map((ch, idx) => (
-              <div key={ch.id} className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <input
-                    type="text"
-                    value={ch.title}
-                    onChange={(e) => updateChapter(idx, 'title', e.target.value)}
-                    placeholder="Título del capítulo"
-                    className="w-full px-3 py-1.5 bg-slate-900 text-xs font-semibold text-white rounded-lg border border-slate-800"
-                  />
-                  {chapters.length > 1 && (
+            {chapters.length === 0 ? (
+              <div className="p-4 bg-slate-950/60 rounded-xl border border-dashed border-slate-800 text-center">
+                <p className="text-xs text-slate-400">
+                  {uploadedFile 
+                    ? `El archivo original completo (${uploadedFile.name}) se entregará directamente a tus lectores al descargar.`
+                    : 'Si subes un archivo PDF o EPUB completo arriba, tus lectores lo descargarán tal cual sin necesidad de transcribir texto aquí.'}
+                </p>
+                <button
+                  type="button"
+                  onClick={addChapter}
+                  className="mt-2.5 px-3 py-1.5 text-xs font-medium text-amber-400 hover:text-amber-300 bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 rounded-lg inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Añadir fragmento de lectura web (Opcional)</span>
+                </button>
+              </div>
+            ) : (
+              chapters.map((ch, idx) => (
+                <div key={ch.id} className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <input
+                      type="text"
+                      value={ch.title}
+                      onChange={(e) => updateChapter(idx, 'title', e.target.value)}
+                      placeholder="Título del capítulo (ej: Capítulo 1)"
+                      className="w-full px-3 py-1.5 bg-slate-900 text-xs font-semibold text-white rounded-lg border border-slate-800"
+                    />
                     <button
                       type="button"
                       onClick={() => removeChapter(idx)}
                       className="text-slate-500 hover:text-rose-400 p-1 cursor-pointer"
+                      title="Eliminar este capítulo"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
-                  )}
+                  </div>
+                  <textarea
+                    rows={4}
+                    value={ch.content}
+                    onChange={(e) => updateChapter(idx, 'content', e.target.value)}
+                    placeholder="Fragmento o texto que tus lectores podrán leer en el navegador..."
+                    className="w-full px-3 py-2 bg-slate-900 text-xs text-slate-200 rounded-lg border border-slate-800 font-serif leading-relaxed"
+                  />
                 </div>
-                <textarea
-                  rows={4}
-                  value={ch.content}
-                  onChange={(e) => updateChapter(idx, 'content', e.target.value)}
-                  placeholder="Texto completo del capítulo..."
-                  className="w-full px-3 py-2 bg-slate-900 text-xs text-slate-200 rounded-lg border border-slate-800 font-serif leading-relaxed"
-                />
-              </div>
-            ))}
+              ))
+            )}
           </div>
 
           {/* Submit CTA */}
@@ -757,15 +785,28 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-xl cursor-pointer"
+              disabled={isUploadingFile}
+              className="px-4 py-2.5 text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-xl cursor-pointer disabled:opacity-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 text-xs font-semibold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors cursor-pointer shadow-md"
+              disabled={isUploadingFile}
+              className={`px-6 py-2.5 text-xs font-semibold rounded-xl transition-all cursor-pointer shadow-md flex items-center gap-2 ${
+                isUploadingFile
+                  ? 'bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-700'
+                  : 'text-slate-950 bg-amber-400 hover:bg-amber-300 shadow-amber-950/20'
+              }`}
             >
-              Publicar Libro en la Plataforma
+              {isUploadingFile ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+                  <span>Subiendo archivo original... Por favor espera</span>
+                </>
+              ) : (
+                <span>Publicar Libro en la Plataforma</span>
+              )}
             </button>
           </div>
         </form>
