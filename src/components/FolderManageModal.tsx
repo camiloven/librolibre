@@ -26,6 +26,14 @@ const AVAILABLE_COLORS = [
   { id: 'indigo', label: 'Índigo (Filosofía/Ensayo)', bg: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40', badge: 'bg-indigo-500' },
 ];
 
+export const PRESET_FOLDERS = [
+  { name: 'Medicina', icon: '🩺', color: 'emerald', desc: 'Obras y textos de medicina, salud y anatomía' },
+  { name: 'Terror', icon: '🔪', color: 'rose', desc: 'Novelas y relatos de terror, suspenso y misterio' },
+  { name: 'Romántica', icon: '💖', color: 'purple', desc: 'Novelas románticas, poesía y drama emocional' },
+  { name: 'Ciencia Ficción', icon: '🚀', color: 'sky', desc: 'Ciencia ficción, distopías y literatura especulativa' },
+  { name: 'Historia & Crónica', icon: '📜', color: 'amber', desc: 'Ensayos históricos, crónicas y biografías' },
+];
+
 export const FolderManageModal: React.FC<FolderManageModalProps> = ({
   folders,
   books,
@@ -46,10 +54,18 @@ export const FolderManageModal: React.FC<FolderManageModalProps> = ({
   });
   const assignBookFn = onAssignBookToFolder || onMoveBookToFolder || (() => {});
   const [selectedFolderId, setSelectedFolderId] = useState<string>(folders[0]?.id || '');
-  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [isCreatingNew, setIsCreatingNew] = useState(folders.length === 0);
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderDesc, setNewFolderDesc] = useState('');
   const [newFolderColor, setNewFolderColor] = useState('emerald');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Sync selectedFolderId when folders list updates
+  React.useEffect(() => {
+    if ((!selectedFolderId || !folders.some((f) => f.id === selectedFolderId)) && folders.length > 0) {
+      setSelectedFolderId(folders[0].id);
+    }
+  }, [folders, selectedFolderId]);
 
   // Edit folder state
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
@@ -59,6 +75,24 @@ export const FolderManageModal: React.FC<FolderManageModalProps> = ({
   const currentFolder = folders.find((f) => f.id === selectedFolderId);
   const booksInCurrentFolder = books.filter((b) => b.folderId === selectedFolderId);
 
+  const handleQuickCreatePreset = async (preset: typeof PRESET_FOLDERS[0]) => {
+    const existing = folders.find((f) => f.name.trim().toLowerCase() === preset.name.toLowerCase());
+    if (existing) {
+      setSelectedFolderId(existing.id);
+      return;
+    }
+    const folderId = `folder-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+    const newFolder: BookFolder = {
+      id: folderId,
+      name: preset.name,
+      description: preset.desc,
+      color: preset.color,
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+    await createFolderFn(newFolder);
+    setSelectedFolderId(folderId);
+  };
+
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFolderName.trim()) {
@@ -66,21 +100,27 @@ export const FolderManageModal: React.FC<FolderManageModalProps> = ({
       return;
     }
 
-    const folderId = `folder-${Date.now()}`;
-    const newFolder: BookFolder = {
-      id: folderId,
-      name: newFolderName.trim(),
-      description: newFolderDesc.trim() || undefined,
-      color: newFolderColor,
-      createdAt: new Date().toISOString().split('T')[0],
-    };
+    setIsSubmitting(true);
+    try {
+      const folderId = `folder-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+      const newFolder: BookFolder = {
+        id: folderId,
+        name: newFolderName.trim(),
+        description: newFolderDesc.trim() || undefined,
+        color: newFolderColor,
+        createdAt: new Date().toISOString().split('T')[0],
+      };
 
-    await createFolderFn(newFolder);
-    setSelectedFolderId(folderId);
-    setNewFolderName('');
-    setNewFolderDesc('');
-    setIsCreatingNew(false);
+      await createFolderFn(newFolder);
+      setSelectedFolderId(folderId);
+      setNewFolderName('');
+      setNewFolderDesc('');
+      setIsCreatingNew(false);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
 
   const handleStartEdit = (f: BookFolder) => {
     setEditingFolderId(f.id);
@@ -165,23 +205,53 @@ export const FolderManageModal: React.FC<FolderManageModalProps> = ({
               </h4>
               <button
                 type="button"
-                onClick={() => setIsCreatingNew(true)}
+                onClick={() => setIsCreatingNew((prev) => !prev)}
                 className="px-2.5 py-1 text-xs font-semibold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-lg flex items-center gap-1 cursor-pointer transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Nueva Carpeta</span>
+                <span>{isCreatingNew ? 'Ocultar Formulario' : 'Nueva Carpeta'}</span>
               </button>
+            </div>
+
+            {/* Quick 1-Click Presets (Medicina, Terror, Romántica...) */}
+            <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-amber-300">Crear Rápido en 1 Clic:</span>
+                <span className="text-[10px] text-slate-500">Temáticas sugeridas</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {PRESET_FOLDERS.map((preset) => {
+                  const alreadyExists = folders.some((f) => f.name.toLowerCase() === preset.name.toLowerCase());
+                  return (
+                    <button
+                      key={preset.name}
+                      type="button"
+                      disabled={alreadyExists}
+                      onClick={() => handleQuickCreatePreset(preset)}
+                      className={`px-2.5 py-1 text-xs rounded-lg flex items-center gap-1 transition-all ${
+                        alreadyExists
+                          ? 'bg-slate-800/50 text-slate-500 border border-slate-800 cursor-not-allowed opacity-60'
+                          : 'bg-slate-800 text-amber-200 hover:text-slate-950 hover:bg-amber-400 border border-amber-500/30 cursor-pointer shadow-sm'
+                      }`}
+                      title={alreadyExists ? `Carpeta "${preset.name}" ya existe` : `Crear carpeta "${preset.name}" al instante`}
+                    >
+                      <span>{preset.icon}</span>
+                      <span>+ {preset.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Create Folder Form */}
             {isCreatingNew && (
               <form onSubmit={handleCreateSubmit} className="p-3.5 rounded-xl bg-slate-900 border border-amber-500/40 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-amber-300 font-serif">Crear Nueva Carpeta</span>
+                  <span className="text-xs font-semibold text-amber-300 font-serif">Crear Carpeta Personalizada</span>
                   <button
                     type="button"
                     onClick={() => setIsCreatingNew(false)}
-                    className="text-slate-400 hover:text-white text-xs"
+                    className="text-slate-400 hover:text-white text-xs cursor-pointer"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -232,19 +302,21 @@ export const FolderManageModal: React.FC<FolderManageModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsCreatingNew(false)}
-                    className="px-2.5 py-1 text-xs text-slate-400 hover:text-white"
+                    className="px-2.5 py-1 text-xs text-slate-400 hover:text-white cursor-pointer"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="px-3 py-1 text-xs font-semibold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-lg"
+                    disabled={isSubmitting}
+                    className="px-3.5 py-1.5 text-xs font-semibold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-lg cursor-pointer disabled:opacity-50"
                   >
-                    Guardar Carpeta
+                    {isSubmitting ? 'Guardando...' : 'Guardar Carpeta'}
                   </button>
                 </div>
               </form>
             )}
+
 
             {/* Folders List */}
             <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">

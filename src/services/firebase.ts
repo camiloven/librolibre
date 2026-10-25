@@ -386,3 +386,114 @@ export async function updateBookDetailsInFirestore(
   const bookRef = doc(db, 'books', bookId);
   await updateDoc(bookRef, deepCleanForFirestore(updates));
 }
+
+/**
+ * Saves full binary book file into Firestore in 500KB chunks.
+ * Guarantees cross-device permanent availability across all platforms (web, mobile, Render).
+ */
+export async function saveBookFileChunksToFirestore(
+  bookId: string,
+  fileName: string,
+  fileType: string,
+  base64Data: string
+): Promise<void> {
+  const CHUNK_SIZE = 500 * 1024; // 500KB safe chunk size
+  const totalLength = base64Data.length;
+  const totalChunks = Math.ceil(totalLength / CHUNK_SIZE);
+
+  // 1. Save metadata doc
+  const fileMetaRef = doc(db, 'bookFiles', bookId);
+  await setDoc(fileMetaRef, {
+    bookId,
+    fileName,
+    fileType,
+    totalChunks,
+    totalLength,
+    updatedAt: new Date().toISOString(),
+  });
+
+  // 2. Save each chunk
+  for (let i = 0; i < totalChunks; i++) {
+    const start = i * CHUNK_SIZE;
+    const end = Math.min(start + CHUNK_SIZE, totalLength);
+    const chunkData = base64Data.substring(start, end);
+    const chunkRef = doc(db, 'bookFiles', bookId, 'chunks', `chunk_${i}`);
+    await setDoc(chunkRef, {
+      index: i,
+      data: chunkData,
+    });
+  }
+}
+
+/**
+ * Retrieves full binary book file from Firestore chunks.
+ */
+export async function fetchBookFileFromFirestore(
+  bookId: string
+): Promise<{ fileName: string; fileType: string; blob: Blob } | null> {
+  try {
+    const fileMetaRef = doc(db, 'bookFiles', bookId);
+    const metaSnap = await getDoc(fileMetaRef);
+    if (!metaSnap.exists()) return null;
+
+    const meta = metaSnap.data() as {
+      fileName: string;
+      fileType: string;
+      totalChunks: number;
+    };
+
+    let fullBase64 = '';
+    for (let i = 0; i < meta.totalChunks; i++) {
+      const chunkRef = doc(db, 'bookFiles', bookId, 'chunks', `chunk_${i}`);
+      const chunkSnap = await getDoc(chunkRef);
+      if (!chunkSnap.exists()) {
+        console.warn(`Missing chunk ${i} for book ${bookId}`);
+        return null;
+      }
+      fullBase64 += chunkSnap.data()?.data || '';
+    }
+
+    if (!fullBase64) return null;
+
+    // Convert base64 to Blob
+    const mime = getMimeTypeFromExt(meta.fileType);
+    let rawBase64 = fullBase64;
+    if (fullBase64.includes(',')) {
+      rawBase64 = fullBase64.split(',')[1];
+    }
+    const byteChars = atob(rawBase64);
+    const byteNums = new Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) {
+      byteNums[i] = byteChars.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNums);
+    const blob = new Blob([byteArray], { type: mime });
+
+    return {
+      fileName: meta.fileName,
+      fileType: meta.fileType,
+      blob,
+    };
+  } catch (err) {
+    console.warn('Error fetching book file from Firestore:', err);
+    return null;
+  }
+}
+
+function getMimeTypeFromExt(ext: string): string {
+  switch ((ext || '').toUpperCase()) {
+    case 'PDF':
+      return 'application/pdf';
+    case 'EPUB':
+      return 'application/epub+zip';
+    case 'MOBI':
+      return 'application/x-mobipocket-ebook';
+    case 'DOCX':
+      return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    case 'TXT':
+      return 'text/plain;charset=utf-8';
+    default:
+      return 'application/octet-stream';
+  }
+}
+

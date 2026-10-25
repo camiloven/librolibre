@@ -37,6 +37,7 @@ import { AdminLoginModal } from './components/AdminLoginModal';
 import { DeleteBookConfirmModal } from './components/DeleteBookConfirmModal';
 import { EditAuthorProfileModal } from './components/EditAuthorProfileModal';
 import { BookshelfView } from './components/BookshelfView';
+import { FolderManageModal } from './components/FolderManageModal';
 import { 
   Sparkles, BookOpen, ShieldCheck, Heart, ArrowRight, 
   HelpCircle, CheckCircle, Feather, Download, Building2, Smartphone, CreditCard, Lock, Camera, Upload,
@@ -55,6 +56,7 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState<boolean>(() => isAdminAuthenticated());
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isFolderManageOpen, setIsFolderManageOpen] = useState(false);
   const [bookPendingDelete, setBookPendingDelete] = useState<Book | null>(null);
 
   // Views & Modals
@@ -536,6 +538,13 @@ export default function App() {
             setIsUploadModalOpen(true);
           }
         }}
+        onOpenFolderManage={() => {
+          if (!isAdmin) {
+            setIsAdminLoginOpen(true);
+          } else {
+            setIsFolderManageOpen(true);
+          }
+        }}
         onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
         isAdmin={isAdmin}
         onLogoutAdmin={handleAdminLogout}
@@ -555,6 +564,7 @@ export default function App() {
             onOpenUpload={() => setIsUploadModalOpen(true)}
             onOpenPaymentSettings={() => setIsPaymentSettingsOpen(true)}
             onOpenEditProfile={() => setIsEditProfileOpen(true)}
+            onOpenFolderManage={() => setIsFolderManageOpen(true)}
             onToggleLiberate={handleToggleLiberate}
             onRequestDeleteBook={handleRequestDeleteBook}
             onAddCoupon={handleAddCoupon}
@@ -585,6 +595,13 @@ export default function App() {
               folders={folders}
               selectedFolderId={selectedFolderId}
               onFolderChange={setSelectedFolderId}
+              onOpenFolderManage={() => {
+                if (!isAdmin) {
+                  setIsAdminLoginOpen(true);
+                } else {
+                  setIsFolderManageOpen(true);
+                }
+              }}
             />
 
             {/* LIBERATED BOOKS SPOTLIGHT SECTION */}
@@ -1017,6 +1034,7 @@ export default function App() {
           onSaveBook={handleSaveBook}
           defaultAuthorName={authorProfile.name}
           folders={folders}
+          onOpenFolderManager={() => setIsFolderManageOpen(true)}
         />
       )}
 
@@ -1039,7 +1057,19 @@ export default function App() {
         />
       )}
 
-      {/* 9. Floating Toast Notification */}
+      {/* 9. Folder Management Modal (Medicina, Terror, Romántica...) */}
+      {isFolderManageOpen && (
+        <FolderManageModal
+          folders={folders}
+          books={books}
+          onClose={() => setIsFolderManageOpen(false)}
+          onSaveFolder={handleSaveFolder}
+          onDeleteFolder={handleDeleteFolder}
+          onMoveBookToFolder={handleMoveBookToFolder}
+        />
+      )}
+
+      {/* 10. Floating Toast Notification */}
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 max-w-md animate-fade-in pointer-events-auto">
           <div

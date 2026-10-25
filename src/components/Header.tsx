@@ -1,10 +1,11 @@
 import React from 'react';
-import { BookOpen, ShieldCheck, Lock, Unlock, ShoppingBag, Plus } from 'lucide-react';
+import { BookOpen, ShieldCheck, Lock, Unlock, ShoppingBag, Plus, Folder } from 'lucide-react';
 
 interface HeaderProps {
   currentView: 'catalog' | 'author';
   onViewChange: (view: 'catalog' | 'author') => void;
   onOpenUpload: () => void;
+  onOpenFolderManage?: () => void;
   onOpenAdminLogin: () => void;
   isAdmin: boolean;
   onLogoutAdmin: () => void;
@@ -15,6 +16,7 @@ export const Header: React.FC<HeaderProps> = ({
   currentView,
   onViewChange,
   onOpenUpload,
+  onOpenFolderManage,
   onOpenAdminLogin,
   isAdmin,
   onLogoutAdmin,
@@ -91,6 +93,18 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-3 shrink-0">
             {isAdmin ? (
               <div className="flex items-center gap-2">
+                {/* Direct access to Folder Management from anywhere */}
+                {onOpenFolderManage && (
+                  <button
+                    onClick={onOpenFolderManage}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-amber-300 bg-amber-950/60 hover:bg-amber-900/80 border border-amber-500/40 rounded-lg transition-colors whitespace-nowrap cursor-pointer shadow-sm"
+                    title="Crear y Gestionar Carpetas Temáticas (Medicina, Terror, Romántica...)"
+                  >
+                    <Folder className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Carpetas</span>
+                  </button>
+                )}
+
                 {currentView === 'author' ? (
                   <>
                     <button
@@ -109,13 +123,22 @@ export const Header: React.FC<HeaderProps> = ({
                     </button>
                   </>
                 ) : (
-                  <button
-                    onClick={() => onViewChange('author')}
-                    className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-lg transition-colors whitespace-nowrap cursor-pointer shadow-sm"
-                  >
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>Panel Admin Activo</span>
-                  </button>
+                  <>
+                    <button
+                      onClick={onOpenUpload}
+                      className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-lg transition-colors whitespace-nowrap cursor-pointer shadow-sm"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Subir Libro</span>
+                    </button>
+                    <button
+                      onClick={() => onViewChange('author')}
+                      className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-lg transition-colors whitespace-nowrap cursor-pointer shadow-sm"
+                    >
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>Panel Admin</span>
+                    </button>
+                  </>
                 )}
 
                 <button

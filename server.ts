@@ -298,43 +298,11 @@ app.get('/api/books/:id/download', (req: Request, res: Response) => {
       }
     }
 
-    // Fallback: Generate real readable text-based eBook file with attachment header (never empty placeholder!)
-    const safeTitle = (book?.title || 'LibroLibre-Edicion')
-      .replace(/[^a-zA-Z0-9_\-áéíóúÁÉÍÓÚñÑ ]/g, '')
-      .trim();
-    const ext = book?.fileType?.toLowerCase() === 'epub' ? 'epub' : (book?.fileType?.toLowerCase() || 'txt');
-    const filename = `${safeTitle}.${ext}`;
-
-    let content = `================================================================\n`;
-    content += `                  ${(book?.title || 'LIBRO').toUpperCase()}\n`;
-    if (book?.subtitle) content += `               ${book.subtitle}\n`;
-    content += `               Por: ${book?.author || 'Autor'}\n`;
-    content += `================================================================\n\n`;
-    content += `INFORMACIÓN EDITORIAL & DESCARGA\n----------------------------------------------------------------\n`;
-    content += `Género: ${book?.genre || 'General'}\nAño: ${book?.publicationYear || 2026}\nIdioma: ${book?.language || 'Español'}\n`;
-    content += `Licencia: ${book?.isLiberated ? 'OBRA LIBERADA POR EL AUTOR' : 'COPIA REGISTRADA'}\n`;
-    content += `\nSINOPSIS:\n${book?.synopsis || 'Sinopsis disponible en la plataforma.'}\n\n`;
-
-    const validChapters = (book?.sampleChapters || []).filter(
-      (ch: any) => ch && ch.content && !ch.content.includes('Escribe aquí el texto') && ch.content.trim().length > 15
-    );
-
-    if (validChapters.length > 0) {
-      validChapters.forEach((ch: any, idx: number) => {
-        content += `\n[CAPÍTULO ${idx + 1}: ${(ch.title || '').toUpperCase()}]\n----------------------------------------------------------------\n\n${ch.content || ''}\n\n`;
-      });
-    } else {
-      content += `[INFORMACIÓN DE ACCESO]\n----------------------------------------------------------------\n\n`;
-      content += `Has adquirido la edición autorizada de "${book?.title || 'la obra'}", por ${book?.author || 'el autor'}.\n`;
-      if (book?.liberatedNote) {
-        content += `Nota del autor: ${book.liberatedNote}\n\n`;
-      }
-      content += `Para soporte o consultas sobre esta obra, visita LibroLibre Chile.\n\n`;
-    }
-
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    return res.send(content);
+    // If file is not present on ephemeral server disk, return 404 JSON so client uses Cloud Firestore chunks or jsPDF
+    return res.status(404).json({
+      error: 'file_not_found_on_server',
+      message: 'Archivo no encontrado en disco local del servidor; el cliente procederá con la descarga desde Firestore.'
+    });
   } catch (err: any) {
     res.status(500).send('Error al procesar la descarga: ' + err.message);
   }

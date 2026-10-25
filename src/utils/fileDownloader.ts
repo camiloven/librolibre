@@ -1,14 +1,16 @@
 import { Book } from '../types/book';
 import { jsPDF } from 'jspdf';
-import { getBookFileFromCache } from './fileStore';
+import { getBookFileFromCache, saveBookFileToCache } from './fileStore';
+import { fetchBookFileFromFirestore } from '../services/firebase';
 
 /**
  * Triggers a real browser file download for a book.
  * 1. Checks persistent client IndexedDB storage for original binary file (PDF, EPUB).
  * 2. If in-memory Blob or Base64 is present, downloads it.
- * 3. If the author uploaded to server storage, streams the exact original binary file.
- * 4. For PDF books, creates a genuine, complete PDF document with jsPDF.
- * 5. Guarantees that empty placeholder texts are NEVER sent to readers.
+ * 3. Checks Cloud Firestore permanent binary chunk storage (cross-device, persists across Render restarts).
+ * 4. If author uploaded to server storage, fetches the exact original binary file.
+ * 5. For PDF books, creates a genuine, complete PDF document with jsPDF.
+ * 6. Guarantees that empty placeholder texts are NEVER sent to readers.
  */
 export async function downloadBookFile(
   book: Book,
@@ -19,7 +21,7 @@ export async function downloadBookFile(
   const fileExt = (book.fileType || 'PDF').toLowerCase();
   const cleanFileName = book.fileName || `${safeBaseName}.${fileExt}`;
 
-  // 1. Check persistent IndexedDB cache (stored directly when author uploaded)
+  // 1. Check persistent IndexedDB cache (stored directly when author uploaded on this device)
   try {
     const cachedFile = 
       (await getBookFileFromCache(book.id)) || 
@@ -47,16 +49,61 @@ export async function downloadBookFile(
       triggerBlobDownload(blob, cleanFileName);
       return;
     } catch (err) {
-      console.warn('Error reading uploadedFileBlob, generating PDF fallback:', err);
+      console.warn('Error reading uploadedFileBlob:', err);
     }
   }
 
-  // 3. If book has a server-hosted file uploaded by author
-  if (book.downloadUrl && !book.downloadUrl.startsWith('data:')) {
-    const downloadEndpoint = `/api/books/${book.id}/download?file=${encodeURIComponent(book.downloadUrl)}`;
-    triggerUrlDownload(downloadEndpoint, cleanFileName);
-    return;
+  // 3. Check Cloud Firestore permanent binary chunked storage (available to ALL devices worldwide)
+  try {
+    const cloudFile = await fetchBookFileFromFirestore(book.id);
+    if (cloudFile && cloudFile.blob && cloudFile.blob.size > 100) {
+      // Cache in IndexedDB for subsequent instant downloads
+      saveBookFileToCache(book.id, cloudFile.blob, cloudFile.fileName).catch(() => {});
+      triggerBlobDownload(cloudFile.blob, cloudFile.fileName || cleanFileName);
+      return;
+    }
+  } catch (cloudErr) {
+    console.warn('Cloud Firestore file fetch notice:', cloudErr);
   }
+
+  // 4. If book has a server-hosted file uploaded by author, try fetching directly
+  if (book.downloadUrl && !book.downloadUrl.startsWith('data:')) {
+    try {
+      const directUrl = book.downloadUrl.startsWith('/') ? book.downloadUrl : `/${book.downloadUrl}`;
+      const res = await fetch(directUrl);
+      if (res.ok) {
+        const contentType = res.headers.get('content-type') || '';
+        // Ensure not HTML (404 fallback page)
+        if (!contentType.includes('text/html')) {
+          const blob = await res.blob();
+          if (blob && blob.size > 200) {
+            triggerBlobDownload(blob, cleanFileName);
+            return;
+          }
+        }
+      }
+    } catch (serverErr) {
+      console.warn('Server direct file fetch error:', serverErr);
+    }
+
+    try {
+      const downloadEndpoint = `/api/books/${book.id}/download?file=${encodeURIComponent(book.downloadUrl)}`;
+      const res = await fetch(downloadEndpoint);
+      if (res.ok) {
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('text/html') && !contentType.includes('application/json')) {
+          const blob = await res.blob();
+          if (blob && blob.size > 200) {
+            triggerBlobDownload(blob, cleanFileName);
+            return;
+          }
+        }
+      }
+    } catch (apiErr) {
+      console.warn('Download endpoint fetch notice:', apiErr);
+    }
+  }
+
 
   // 4. For PDF (default): generate a real, beautifully formatted PDF document with jsPDF!
   if (fileExt === 'pdf' || !fileExt) {

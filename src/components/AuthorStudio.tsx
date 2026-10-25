@@ -10,6 +10,8 @@ import { BookshelfView } from './BookshelfView';
 import { downloadBookFile } from '../utils/fileDownloader';
 import { FolderManageModal } from './FolderManageModal';
 import { EditBookModal } from './EditBookModal';
+import { saveBookFileToCache } from '../utils/fileStore';
+import { saveBookFileChunksToFirestore } from '../services/firebase';
 
 interface AuthorStudioProps {
   books: Book[];
@@ -33,6 +35,7 @@ interface AuthorStudioProps {
   onSaveFolder?: (folder: BookFolder) => void;
   onDeleteFolder?: (folderId: string) => void;
   onMoveBookToFolder?: (bookId: string, folderId: string | undefined, folderName: string | undefined) => void;
+  onOpenFolderManage?: () => void;
 }
 
 export const AuthorStudio: React.FC<AuthorStudioProps> = ({
@@ -57,6 +60,7 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
   onSaveFolder,
   onDeleteFolder,
   onMoveBookToFolder,
+  onOpenFolderManage,
 }) => {
   const [activeTab, setActiveTab] = useState<'books' | 'payments' | 'coupons' | 'history'>('books');
   const [filterType, setFilterType] = useState<'all' | 'liberated' | 'paid' | 'free'>('all');
@@ -76,12 +80,19 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
         const reader = new FileReader();
         reader.onload = async () => {
           try {
+            const base64Data = reader.result as string;
+
+            // 1. Cache file in IndexedDB immediately
+            saveBookFileToCache(bookId, file, file.name).catch(() => {});
+            // 2. Save full binary chunks into Cloud Firestore
+            saveBookFileChunksToFirestore(bookId, file.name, ext, base64Data).catch(() => {});
+
             const res = await fetch('/api/upload-book-file', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 fileName: file.name,
-                fileData: reader.result,
+                fileData: base64Data,
                 fileType: ext,
               }),
             });
@@ -216,7 +227,13 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
           </button>
 
           <button
-            onClick={() => setIsFolderManageOpen(true)}
+            onClick={() => {
+              if (onOpenFolderManage) {
+                onOpenFolderManage();
+              } else {
+                setIsFolderManageOpen(true);
+              }
+            }}
             className="px-3.5 py-2 text-xs font-semibold text-amber-300 bg-amber-950/60 hover:bg-amber-900/80 border border-amber-500/40 rounded-xl transition-colors flex items-center gap-2 cursor-pointer shadow-sm"
             title="Crear y administrar carpetas temáticas de libros (Solo Administrador)"
           >
@@ -1196,6 +1213,13 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
           onClose={() => setEditingBook(null)}
           onSave={onSaveBookEdit}
           onSaveFolder={onSaveFolder}
+          onOpenFolderManager={() => {
+            if (onOpenFolderManage) {
+              onOpenFolderManage();
+            } else {
+              setIsFolderManageOpen(true);
+            }
+          }}
         />
       )}
     </div>

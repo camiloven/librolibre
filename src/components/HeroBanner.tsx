@@ -14,6 +14,7 @@ interface HeroBannerProps {
   folders?: BookFolder[];
   selectedFolderId?: string;
   onFolderChange?: (folderId: string) => void;
+  onOpenFolderManage?: () => void;
 }
 
 export const HeroBanner: React.FC<HeroBannerProps> = ({
@@ -28,6 +29,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
   folders = [],
   selectedFolderId = 'ALL',
   onFolderChange,
+  onOpenFolderManage,
 }) => {
   return (
     <section className="relative overflow-hidden pt-12 pb-10 bg-slate-950 border-b border-slate-900">
@@ -110,7 +112,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
           </div>
 
           {/* Thematic Folders (Medicina, Terror, Romántica, etc.) */}
-          {folders.length > 0 && onFolderChange && (
+          {onFolderChange && (
             <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5 pt-3 border-t border-slate-900/80">
               <span className="text-[11px] font-mono uppercase tracking-wider text-amber-400 font-semibold flex items-center gap-1 mr-1">
                 <Folder className="w-3.5 h-3.5" />
@@ -127,6 +129,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
               >
                 Todas las carpetas
               </button>
+
               {folders.map((folder) => (
                 <button
                   key={folder.id}
@@ -142,9 +145,21 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
                   <span>📁 {folder.name}</span>
                 </button>
               ))}
+
+              {onOpenFolderManage && (
+                <button
+                  type="button"
+                  onClick={onOpenFolderManage}
+                  className="px-2.5 py-1 text-xs font-semibold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/40 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                  title="Crear y organizar carpetas temáticas de libros"
+                >
+                  <span>➕ {folders.length === 0 ? 'Crear Carpetas (Medicina, Terror...)' : 'Gestionar'}</span>
+                </button>
+              )}
             </div>
           )}
         </div>
+
 
         {/* Proof & Catalog Numbers */}
         <div className="mt-12 pt-8 border-t border-slate-900 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">

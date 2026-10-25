@@ -25,6 +25,16 @@ service cloud.firestore {
       allow write: if true;
     }
 
+    // Persistent binary book files (chunked base64 storage for permanent cross-device downloads)
+    match /bookFiles/{fileId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    match /bookFiles/{bookId}/chunks/{chunkId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
     // Transactions and download records
     match /transactions/{transactionId} {
       allow read: if true;
@@ -33,3 +43,4 @@ service cloud.firestore {
     }
   }
 }
+

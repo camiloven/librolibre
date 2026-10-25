@@ -7,12 +7,14 @@ import {
 import { extractCoverFromPdf, generateTextBookCover } from '../utils/pdfCoverExtractor';
 import { compressImage } from '../utils/imageCompressor';
 import { saveBookFileToCache } from '../utils/fileStore';
+import { saveBookFileChunksToFirestore } from '../services/firebase';
 
 interface UploadBookModalProps {
   onClose: () => void;
   onSaveBook: (newBook: Book) => void;
   defaultAuthorName: string;
   folders?: BookFolder[];
+  onOpenFolderManager?: () => void;
 }
 
 export const UploadBookModal: React.FC<UploadBookModalProps> = ({
@@ -20,6 +22,7 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
   onSaveBook,
   defaultAuthorName,
   folders = [],
+  onOpenFolderManager,
 }) => {
   // Book fields
   const [title, setTitle] = useState('');
@@ -42,6 +45,7 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
 
   // File upload state
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [fileBase64Data, setFileBase64Data] = useState<string>('');
   const [downloadUrl, setDownloadUrl] = useState<string>('');
   const [isUploadingFile, setIsUploadingFile] = useState<boolean>(false);
   const [uploadFileError, setUploadFileError] = useState<string | null>(null);
@@ -83,6 +87,7 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
       reader.onload = async () => {
         try {
           const base64Data = reader.result as string;
+          setFileBase64Data(base64Data);
           const res = await fetch('/api/upload-book-file', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -101,7 +106,7 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
           }
         } catch (err: any) {
           console.warn('Error uploading original book to server:', err);
-          setUploadFileError('No se pudo subir al servidor; se guardará de forma local.');
+          setUploadFileError('No se pudo subir al servidor; se guardará de forma local y en la nube.');
         } finally {
           setIsUploadingFile(false);
         }
@@ -217,7 +222,7 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
 
     const bookId = `book-${Date.now()}`;
 
-    // Cache the original file in client IndexedDB permanently so it can never be lost
+    // 1. Cache the original file in client IndexedDB permanently
     if (uploadedFile) {
       try {
         await saveBookFileToCache(bookId, uploadedFile, uploadedFile.name);
@@ -225,6 +230,13 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
       } catch (err) {
         console.warn('Could not cache file in IndexedDB:', err);
       }
+    }
+
+    // 2. Save full binary file in Cloud Firestore in persistent chunks (never wiped by Render restarts!)
+    if (fileBase64Data && uploadedFile) {
+      saveBookFileChunksToFirestore(bookId, uploadedFile.name, fileType, fileBase64Data).catch((err) => {
+        console.warn('Could not save file to Firestore chunks:', err);
+      });
     }
 
     const chosenFolder = (folders || []).find((f) => f.id === selectedFolderId);
@@ -427,10 +439,21 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs text-slate-400 mb-1 flex items-center gap-1.5">
-                  <Folder className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Carpeta Temática (Administrador)</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-slate-400 flex items-center gap-1.5">
+                    <Folder className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Carpeta Temática (Administrador)</span>
+                  </label>
+                  {onOpenFolderManager && (
+                    <button
+                      type="button"
+                      onClick={onOpenFolderManager}
+                      className="text-[11px] text-amber-400 hover:text-amber-300 cursor-pointer font-medium"
+                    >
+                      + Crear / Gestionar Carpetas
+                    </button>
+                  )}
+                </div>
                 <select
                   value={selectedFolderId}
                   onChange={(e) => setSelectedFolderId(e.target.value)}
