@@ -3,7 +3,7 @@ import {
   getFirestore, collection, doc, onSnapshot, getDocs, 
   getDoc, setDoc, updateDoc, deleteDoc, query, increment
 } from 'firebase/firestore';
-import { Book, AuthorProfile, Transaction } from '../types/book';
+import { Book, AuthorProfile, Transaction, BookFolder } from '../types/book';
 import { INITIAL_BOOKS, DEFAULT_AUTHOR } from '../utils/storage';
 import { compressImage } from '../utils/imageCompressor';
 import firebaseConfig from '../../firebase-applet-config.json';
@@ -328,4 +328,61 @@ export async function recordTransactionInFirestore(tx: Transaction): Promise<voi
   } catch (err) {
     console.warn('Could not record transaction in Firestore:', err);
   }
+}
+
+/**
+ * Real-time subscription to folders collection
+ */
+export function subscribeToFolders(
+  onFoldersChanged: (folders: BookFolder[]) => void,
+  onError?: (err: Error) => void
+): () => void {
+  const foldersCol = collection(db, 'folders');
+
+  const unsubscribe = onSnapshot(
+    foldersCol,
+    (snapshot) => {
+      const foldersList: BookFolder[] = [];
+      snapshot.forEach((docSnap) => {
+        foldersList.push({
+          ...(docSnap.data() as BookFolder),
+          id: docSnap.id,
+        });
+      });
+      foldersList.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      onFoldersChanged(foldersList);
+    },
+    (error) => {
+      console.warn('Firestore folders listener error:', error);
+      if (onError) onError(error);
+    }
+  );
+
+  return unsubscribe;
+}
+
+/**
+ * Save or update a folder in Cloud Firestore
+ */
+export async function saveFolderToFirestore(folder: BookFolder): Promise<void> {
+  const folderRef = doc(db, 'folders', folder.id);
+  await setDoc(folderRef, deepCleanForFirestore(folder), { merge: true });
+}
+
+/**
+ * Delete a folder from Cloud Firestore
+ */
+export async function deleteFolderFromFirestore(folderId: string): Promise<void> {
+  await deleteDoc(doc(db, 'folders', folderId));
+}
+
+/**
+ * Update any book details in Cloud Firestore (prices in CLP/USD, liberation, folder assignment, etc.)
+ */
+export async function updateBookDetailsInFirestore(
+  bookId: string,
+  updates: Partial<Book>
+): Promise<void> {
+  const bookRef = doc(db, 'books', bookId);
+  await updateDoc(bookRef, deepCleanForFirestore(updates));
 }

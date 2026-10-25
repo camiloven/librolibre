@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Book, formatCurrency } from '../types/book';
 import { 
   MoreVertical, BookOpen, Download, Sparkles, Trash2, 
-  Upload, Loader2, Check, Star, Info, FileText 
+  Upload, Loader2, Check, Star, Info, FileText, Edit3, Folder
 } from 'lucide-react';
 
 interface BookshelfViewProps {
@@ -12,6 +12,7 @@ interface BookshelfViewProps {
   onDownloadBook: (book: Book) => void;
   isAuthorMode?: boolean;
   onToggleLiberate?: (bookId: string) => void;
+  onEditBook?: (book: Book) => void;
   onRequestDeleteBook?: (book: Book) => void;
   onAttachFile?: (bookId: string, e: React.ChangeEvent<HTMLInputElement>) => void;
   uploadingBookId?: string | null;
@@ -24,6 +25,7 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
   onDownloadBook,
   isAuthorMode = false,
   onToggleLiberate,
+  onEditBook,
   onRequestDeleteBook,
   onAttachFile,
   uploadingBookId,
@@ -143,8 +145,8 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
                           <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
                         </div>
 
-                        {/* Top-Right Price or Liberation Tag */}
-                        <div className="absolute top-1.5 right-1.5 z-20 pointer-events-none">
+                        {/* Top-Right Price or Liberation Tag + Folder Badge */}
+                        <div className="absolute top-1.5 right-1.5 z-20 pointer-events-none flex flex-col items-end gap-1">
                           {isLiberated ? (
                             <span className="px-1.5 py-0.5 rounded bg-emerald-900/90 border border-emerald-400/60 text-emerald-300 font-bold text-[9px] sm:text-[10px] shadow-lg flex items-center gap-0.5 backdrop-blur-sm">
                               <Sparkles className="w-2.5 h-2.5" />
@@ -156,7 +158,14 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
                             </span>
                           ) : (
                             <span className="px-1.5 py-0.5 rounded bg-slate-950/90 border border-slate-700/80 text-amber-300 font-mono font-bold text-[9px] sm:text-[10px] shadow-lg backdrop-blur-sm">
-                              {formatCurrency(book.price, 'CLP')}
+                              {book.priceUSD ? `${formatCurrency(book.price, 'CLP')} / $${book.priceUSD} USD` : formatCurrency(book.price, 'CLP')}
+                            </span>
+                          )}
+
+                          {book.folderName && (
+                            <span className="px-1 py-0.2 rounded bg-amber-950/80 border border-amber-500/40 text-amber-200 text-[8px] sm:text-[9px] font-medium flex items-center gap-0.5 backdrop-blur-sm">
+                              <Folder className="w-2.5 h-2.5" />
+                              <span className="max-w-[70px] truncate">{book.folderName}</span>
                             </span>
                           )}
                         </div>
@@ -257,7 +266,19 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
                           {/* Author Management Actions inside 3-dots menu */}
                           {isAuthorMode && (
                             <>
-                              <div className="border-t border-slate-800 my-1" />
+                              {onEditBook && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMenuBookId(null);
+                                    onEditBook(book);
+                                  }}
+                                  className="w-full px-2.5 py-1.5 text-left rounded-lg hover:bg-slate-800 text-amber-300 flex items-center gap-2 cursor-pointer transition-colors"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                  <span>Editar Valores & Carpeta</span>
+                                </button>
+                              )}
 
                               {onToggleLiberate && book.pricingType !== 'free' && (
                                 <button

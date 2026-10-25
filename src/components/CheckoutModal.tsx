@@ -240,13 +240,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </div>
             )}
 
-            {/* Total Price in Chilean Pesos */}
+            {/* Total Price in Chilean Pesos & USD */}
             <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
               <div>
                 <span className="text-xs text-slate-400">Total a pagar:</span>
-                <div className="text-2xl font-bold font-mono text-white tabular-nums">
-                  {formatCurrency(totalToPay, 'CLP')}
+                <div className="text-2xl font-bold font-mono text-white tabular-nums flex items-baseline gap-2">
+                  <span>{formatCurrency(totalToPay, 'CLP')}</span>
+                  {book.priceUSD && !isLiberated && !isFree && appliedDiscount === 0 && (
+                    <span className="text-sm font-normal text-amber-400">/ ${book.priceUSD} USD</span>
+                  )}
                 </div>
+                {book.folderName && (
+                  <span className="text-[11px] text-amber-300 font-medium mt-0.5 inline-block">
+                    📁 Temática: {book.folderName}
+                  </span>
+                )}
               </div>
 
               {appliedDiscount === 100 ? (
@@ -257,7 +265,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               ) : isLiberated || isFree ? (
                 <div className="text-right">
                   <span className="text-xs font-semibold text-emerald-400">GRATIS POR EL AUTOR</span>
-                  <div className="text-[11px] text-slate-400">$0 CLP</div>
+                  <div className="text-[11px] text-slate-400">$0 CLP / $0 USD</div>
                 </div>
               ) : (
                 <div className="text-right text-xs text-slate-400">

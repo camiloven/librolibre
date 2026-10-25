@@ -1,6 +1,6 @@
 import React from 'react';
-import { Book, formatCurrency } from '../types/book';
-import { X, BookOpen, Download, Star, Sparkles, CheckCircle2, ShieldCheck, FileText, Calendar, Globe, Layers } from 'lucide-react';
+import { Book, formatCurrency, formatBothPrices } from '../types/book';
+import { X, BookOpen, Download, Star, Sparkles, CheckCircle2, ShieldCheck, FileText, Calendar, Globe, Layers, Folder } from 'lucide-react';
 
 interface BookDetailsModalProps {
   book: Book | null;
@@ -91,9 +91,18 @@ export const BookDetailsModal: React.FC<BookDetailsModalProps> = ({
           {/* Details Column (7 cols) */}
           <div className="md:col-span-7 p-6 sm:p-8 flex flex-col justify-between">
             <div>
-              {/* Category & Status */}
-              <div className="flex items-center gap-2 text-xs text-slate-400 font-medium mb-2">
+              {/* Category, Folder & Status */}
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 font-medium mb-2">
                 <span className="uppercase tracking-wider text-amber-400">{book.genre}</span>
+                {book.folderName && (
+                  <>
+                    <span aria-hidden="true" className="text-slate-600">·</span>
+                    <span className="text-amber-300 font-semibold flex items-center gap-1 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-500/40">
+                      <Folder className="w-3 h-3 text-amber-400" />
+                      <span>{book.folderName}</span>
+                    </span>
+                  </>
+                )}
                 <span aria-hidden="true" className="text-slate-600">·</span>
                 <span>{book.publicationYear}</span>
                 <span aria-hidden="true" className="text-slate-600">·</span>
@@ -161,13 +170,13 @@ export const BookDetailsModal: React.FC<BookDetailsModalProps> = ({
                   <div className="text-xs text-slate-400">Modalidad de acceso</div>
                   <div className="text-xl font-bold font-mono text-white tabular-nums">
                     {isLiberated ? (
-                      <span className="text-emerald-400">$0 CLP (Liberado)</span>
+                      <span className="text-emerald-400">$0 CLP / $0 USD (Liberado)</span>
                     ) : isFree ? (
                       <span className="text-amber-400">Descarga Gratuita</span>
                     ) : isPwyw ? (
                       <span>Aporte libre (min {formatCurrency(book.allowPwywMin || 1000, 'CLP')})</span>
                     ) : (
-                      <span>{formatCurrency(book.price, 'CLP')}</span>
+                      <span>{formatBothPrices(book.price, book.priceUSD)}</span>
                     )}
                   </div>
                 </div>

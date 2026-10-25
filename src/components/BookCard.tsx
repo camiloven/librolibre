@@ -1,5 +1,5 @@
-import { Book, formatCurrency } from '../types/book';
-import { BookOpen, Download, Star, Sparkles } from 'lucide-react';
+import { Book, formatCurrency, formatBothPrices } from '../types/book';
+import { BookOpen, Download, Star, Sparkles, Folder } from 'lucide-react';
 
 interface BookCardProps {
   book: Book;
@@ -24,8 +24,8 @@ export const BookCard: React.FC<BookCardProps> = ({
   const isLiberated = book.isLiberated;
   const isPwyw = book.pricingType === 'pwyw';
 
-  // Determine display price string in CLP
-  let priceDisplay = formatCurrency(book.price, 'CLP');
+  // Determine display price string (CLP and USD dual currency)
+  let priceDisplay = formatBothPrices(book.price, book.priceUSD);
   if (isLiberated) {
     priceDisplay = 'GRATIS (LIBERADO)';
   } else if (isFree) {
@@ -106,6 +106,15 @@ export const BookCard: React.FC<BookCardProps> = ({
           {/* Metadata line with typographic separators (Zero-Pill compliant) */}
           <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mb-1.5 font-medium truncate">
             <span className="uppercase tracking-wider text-amber-400/90 truncate">{book.genre}</span>
+            {book.folderName && (
+              <>
+                <span aria-hidden="true" className="text-slate-600">·</span>
+                <span className="text-amber-300 font-semibold flex items-center gap-0.5 truncate">
+                  <Folder className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+                  <span className="truncate">{book.folderName}</span>
+                </span>
+              </>
+            )}
             <span aria-hidden="true" className="text-slate-600">·</span>
             <span className="shrink-0">{book.pageCount} pág</span>
             <span aria-hidden="true" className="text-slate-600">·</span>

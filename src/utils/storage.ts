@@ -1,4 +1,4 @@
-import { Book, AuthorProfile, Coupon, Transaction } from '../types/book';
+import { Book, AuthorProfile, Coupon, Transaction, BookFolder } from '../types/book';
 
 // Seed book covers from assets
 import coverSilence from '../assets/images/cover_silence_lighthouses_1792626123142.jpg';
@@ -8,6 +8,7 @@ import coverDailyHabits from '../assets/images/cover_daily_habits_1792626124494.
 
 const STORAGE_KEYS = {
   BOOKS: 'librolibre_books_clp_v2',
+  FOLDERS: 'librolibre_folders_chile_v1',
   AUTHOR: 'librolibre_author_chile_v2',
   COUPONS: 'librolibre_coupons_chile_v2',
   TRANSACTIONS: 'librolibre_transactions_chile_v2',
@@ -522,4 +523,54 @@ export function recordTransaction(tx: Omit<Transaction, 'id' | 'date'>): Transac
   }).catch((err) => console.warn('Could not post tx to server:', err));
 
   return newTx;
+}
+
+// Default Thematic Folders (Medicina, Terror, Romántica...)
+export const DEFAULT_FOLDERS: BookFolder[] = [
+  {
+    id: 'folder-medicina',
+    name: 'Medicina',
+    description: 'Tratados clínicos, bienestar e investigación médica.',
+    color: 'emerald',
+    iconName: 'Activity',
+    createdAt: '2025-01-01',
+  },
+  {
+    id: 'folder-terror',
+    name: 'Terror',
+    description: 'Relatos de misterio, horror cósmico y ficción oscura.',
+    color: 'rose',
+    iconName: 'Ghost',
+    createdAt: '2025-01-01',
+  },
+  {
+    id: 'folder-romantica',
+    name: 'Romántica',
+    description: 'Novelas de amor, dramas afectivos y lírica contemporánea.',
+    color: 'purple',
+    iconName: 'Heart',
+    createdAt: '2025-01-01',
+  },
+];
+
+export function loadFolders(): BookFolder[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.FOLDERS);
+    if (!raw) {
+      saveFolders(DEFAULT_FOLDERS);
+      return DEFAULT_FOLDERS;
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_FOLDERS;
+  } catch {
+    return DEFAULT_FOLDERS;
+  }
+}
+
+export function saveFolders(folders: BookFolder[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.FOLDERS, JSON.stringify(folders));
+  } catch (e) {
+    console.error('Failed to save folders:', e);
+  }
 }

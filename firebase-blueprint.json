@@ -59,12 +59,30 @@
         "date": { "type": "string" }
       },
       "required": ["id", "bookId", "amount", "date"]
+    },
+    "BookFolder": {
+      "title": "BookFolder",
+      "description": "Thematic folder/category created by the admin (e.g. Medicina, Terror, Romántica) to organize books.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "color": { "type": "string" },
+        "iconName": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name"]
     }
   },
   "firestore": {
     "/books/{bookId}": {
       "schema": "Book",
       "description": "Collection of all published and liberated books accessible to all readers."
+    },
+    "/folders/{folderId}": {
+      "schema": "BookFolder",
+      "description": "Thematic folders created by administrator to organize books into custom categories."
     },
     "/settings/authorProfile": {
       "schema": "AuthorProfile",

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Book, AuthorProfile, Coupon, Transaction, formatCurrency } from './types/book';
+import { Book, AuthorProfile, Coupon, Transaction, BookFolder, formatCurrency } from './types/book';
 import { 
   loadBooks, saveBooks, loadAuthorProfile, saveAuthorProfile,
-  loadCoupons, saveCoupons, loadTransactions, INITIAL_BOOKS,
+  loadCoupons, saveCoupons, loadTransactions, loadFolders, saveFolders, INITIAL_BOOKS,
   isAdminAuthenticated, setAdminAuthenticated,
   fetchBooksFromServer, saveBookToServer, deleteBookFromServer,
   toggleLiberateBookOnServer, incrementDownloadOnServer,
@@ -11,11 +11,15 @@ import {
 import {
   subscribeToBooks,
   subscribeToAuthor,
+  subscribeToFolders,
   saveBookToFirestore,
   deleteBookFromFirestore,
   deleteAllDemoBooksFromFirestore,
   cleanDuplicateBooksInFirestore,
   updateBookFileInFirestore,
+  updateBookDetailsInFirestore,
+  saveFolderToFirestore,
+  deleteFolderFromFirestore,
   toggleLiberationInFirestore,
   incrementDownloadInFirestore,
   saveAuthorToFirestore
@@ -36,7 +40,7 @@ import { BookshelfView } from './components/BookshelfView';
 import { 
   Sparkles, BookOpen, ShieldCheck, Heart, ArrowRight, 
   HelpCircle, CheckCircle, Feather, Download, Building2, Smartphone, CreditCard, Lock, Camera, Upload,
-  LayoutGrid, Columns, Library
+  LayoutGrid, Columns, Library, Folder
 } from 'lucide-react';
 
 export default function App() {
@@ -45,6 +49,7 @@ export default function App() {
   const [authorProfile, setAuthorProfile] = useState<AuthorProfile>(() => loadAuthorProfile());
   const [coupons, setCoupons] = useState<Coupon[]>(() => loadCoupons());
   const [transactions, setTransactions] = useState<Transaction[]>(() => loadTransactions());
+  const [folders, setFolders] = useState<BookFolder[]>(() => loadFolders());
 
   // Administrator Mode State
   const [isAdmin, setIsAdmin] = useState<boolean>(() => isAdminAuthenticated());
@@ -63,6 +68,7 @@ export default function App() {
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('ALL');
+  const [selectedFolderId, setSelectedFolderId] = useState<string>('ALL');
   const [catalogGridMode, setCatalogGridMode] = useState<'bookshelf' | 'grid4' | 'comfort'>('bookshelf');
 
   // Floating Toast Notification
@@ -137,6 +143,14 @@ export default function App() {
       }
     });
 
+    // 3. Subscribe to Cloud Firestore thematic folders
+    const unsubFolders = subscribeToFolders((cloudFolders) => {
+      if (Array.isArray(cloudFolders) && cloudFolders.length > 0) {
+        setFolders(cloudFolders);
+        saveFolders(cloudFolders);
+      }
+    });
+
     // Fallback: server disk check
     fetchBooksFromServer().then((srvBooks) => {
       if (srvBooks && srvBooks.length > 0) {
@@ -150,6 +164,7 @@ export default function App() {
     return () => {
       unsubBooks();
       unsubAuthor();
+      unsubFolders();
     };
   }, []);
 
@@ -157,6 +172,11 @@ export default function App() {
   useEffect(() => {
     saveBooks(books);
   }, [books]);
+
+  // Sync folders with local storage cache
+  useEffect(() => {
+    saveFolders(folders);
+  }, [folders]);
 
   // Sync author profile with local cache
   useEffect(() => {
@@ -206,15 +226,18 @@ export default function App() {
         b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         b.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
         b.synopsis.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (b.folderName && b.folderName.toLowerCase().includes(searchQuery.toLowerCase())) ||
         b.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()));
 
       if (!matchesSearch) return false;
+
+      if (selectedFolderId !== 'ALL' && b.folderId !== selectedFolderId) return false;
 
       if (selectedGenre === 'ALL') return true;
       if (selectedGenre === 'LIBERATED') return b.isLiberated || b.pricingType === 'free';
       return b.genre === selectedGenre;
     });
-  }, [books, searchQuery, selectedGenre]);
+  }, [books, searchQuery, selectedGenre, selectedFolderId]);
 
   // Prevents repeating books: if a book is already featured in the top spotlight, exclude it from the grid below
   const isSpotlightActive = liberatedBooks.length > 0 && selectedGenre !== 'LIBERATED' && !searchQuery;
@@ -409,6 +432,75 @@ export default function App() {
     }
   };
 
+  // Edit book details (price in CLP/USD, liberation toggle, folder assignment)
+  const handleSaveBookEdit = async (updatedBook: Book) => {
+    setBooks((prev) => prev.map((b) => (b.id === updatedBook.id ? updatedBook : b)));
+    try {
+      await saveBookToFirestore(updatedBook);
+      showToast(`¡Libro "${updatedBook.title}" actualizado con éxito!`);
+    } catch (err: any) {
+      console.warn('Error saving book edit to Firestore:', err);
+      showToast('Error al actualizar libro en Firestore: ' + (err?.message || ''), 'error');
+    }
+  };
+
+  // Save / Update Folder (Admin only)
+  const handleSaveFolder = async (folder: BookFolder) => {
+    setFolders((prev) => {
+      const exists = prev.some((f) => f.id === folder.id);
+      const updated = exists ? prev.map((f) => (f.id === folder.id ? folder : f)) : [...prev, folder];
+      saveFolders(updated);
+      return updated;
+    });
+    try {
+      await saveFolderToFirestore(folder);
+      showToast(`Carpeta "${folder.name}" guardada en la nube.`);
+    } catch (err: any) {
+      console.warn('Error saving folder to Firestore:', err);
+      showToast('Error al guardar carpeta en Firestore: ' + (err?.message || ''), 'error');
+    }
+  };
+
+  // Delete Folder (Admin only)
+  const handleDeleteFolder = async (folderId: string) => {
+    setFolders((prev) => {
+      const updated = prev.filter((f) => f.id !== folderId);
+      saveFolders(updated);
+      return updated;
+    });
+    setBooks((prev) =>
+      prev.map((b) => (b.folderId === folderId ? { ...b, folderId: undefined, folderName: undefined } : b))
+    );
+    try {
+      await deleteFolderFromFirestore(folderId);
+      showToast('Carpeta eliminada.');
+    } catch (err: any) {
+      console.warn('Error deleting folder from Firestore:', err);
+      showToast('Error al eliminar carpeta: ' + (err?.message || ''), 'error');
+    }
+  };
+
+  // Move book to a folder
+  const handleMoveBookToFolder = async (
+    bookId: string,
+    folderId: string | undefined,
+    folderName: string | undefined
+  ) => {
+    setBooks((prev) =>
+      prev.map((b) => (b.id === bookId ? { ...b, folderId, folderName } : b))
+    );
+    try {
+      await updateBookDetailsInFirestore(bookId, {
+        folderId: folderId || undefined,
+        folderName: folderName || undefined,
+      });
+      showToast('Asignación de carpeta actualizada.');
+    } catch (err: any) {
+      console.warn('Error moving book in Firestore:', err);
+      showToast('Error al mover libro: ' + (err?.message || ''), 'error');
+    }
+  };
+
   // Add Coupon
   const handleAddCoupon = (newCoupon: Coupon) => {
     setCoupons((prev) => [newCoupon, ...prev]);
@@ -459,6 +551,7 @@ export default function App() {
             authorProfile={authorProfile}
             coupons={coupons}
             transactions={transactions}
+            folders={folders}
             onOpenUpload={() => setIsUploadModalOpen(true)}
             onOpenPaymentSettings={() => setIsPaymentSettingsOpen(true)}
             onOpenEditProfile={() => setIsEditProfileOpen(true)}
@@ -471,6 +564,10 @@ export default function App() {
             onDeleteAllDemoBooks={handleDeleteAllDemoBooks}
             onCleanDuplicates={handleCleanDuplicates}
             onUpdateBookFile={handleUpdateBookFile}
+            onSaveBookEdit={handleSaveBookEdit}
+            onSaveFolder={handleSaveFolder}
+            onDeleteFolder={handleDeleteFolder}
+            onMoveBookToFolder={handleMoveBookToFolder}
           />
         ) : (
           /* READER / PUBLIC STOREFRONT VIEW */
@@ -485,10 +582,13 @@ export default function App() {
               totalBooks={books.length}
               liberatedBooks={liberatedBooks.length}
               totalDownloads={totalDownloads}
+              folders={folders}
+              selectedFolderId={selectedFolderId}
+              onFolderChange={setSelectedFolderId}
             />
 
             {/* LIBERATED BOOKS SPOTLIGHT SECTION */}
-            {liberatedBooks.length > 0 && selectedGenre !== 'LIBERATED' && !searchQuery && (
+            {liberatedBooks.length > 0 && selectedGenre !== 'LIBERATED' && selectedFolderId === 'ALL' && !searchQuery && (
               <section id="liberated-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="p-6 sm:p-8 rounded-2xl bg-gradient-to-br from-emerald-950/30 via-slate-900 to-slate-950 border border-emerald-900/40 relative overflow-hidden">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -506,7 +606,10 @@ export default function App() {
                     </div>
 
                     <button
-                      onClick={() => setSelectedGenre('LIBERATED')}
+                      onClick={() => {
+                        setSelectedGenre('LIBERATED');
+                        setSelectedFolderId('ALL');
+                      }}
                       className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer whitespace-nowrap self-start sm:self-center"
                     >
                       <span>Ver todas las obras libres</span>
@@ -531,12 +634,14 @@ export default function App() {
             )}
 
             {/* MAIN CATALOG GRID */}
-            {(!isSpotlightActive || catalogDisplayBooks.length > 0 || searchQuery || selectedGenre !== 'ALL') && (
+            {(!isSpotlightActive || catalogDisplayBooks.length > 0 || searchQuery || selectedGenre !== 'ALL' || selectedFolderId !== 'ALL') && (
               <section id="catalog-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                   <div>
                     <h2 className="text-xl sm:text-2xl lg:text-3xl font-serif font-bold text-white">
-                      {selectedGenre === 'ALL' && isSpotlightActive
+                      {selectedFolderId !== 'ALL'
+                        ? `Temática: ${folders.find((f) => f.id === selectedFolderId)?.name || 'Carpeta'}`
+                        : selectedGenre === 'ALL' && isSpotlightActive
                         ? 'Más Obras del Catálogo'
                         : selectedGenre === 'ALL'
                         ? 'Catálogo Disponible en Chile'
@@ -545,15 +650,16 @@ export default function App() {
                         : `Categoría: ${selectedGenre}`}
                     </h2>
                     <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                      Precios expresados en Pesos Chilenos (CLP) · Libros custodiados permanentemente por el autor
+                      Precios expresados en Pesos Chilenos (CLP) y Dólares (USD) · Libros custodiados por el autor
                     </p>
                   </div>
 
                   <div className="flex items-center gap-3">
-                    {(selectedGenre !== 'ALL' || searchQuery) && (
+                    {(selectedGenre !== 'ALL' || selectedFolderId !== 'ALL' || searchQuery) && (
                       <button
                         onClick={() => {
                           setSelectedGenre('ALL');
+                          setSelectedFolderId('ALL');
                           setSearchQuery('');
                         }}
                         className="text-xs font-medium text-amber-400 hover:text-amber-300 cursor-pointer"
@@ -910,6 +1016,7 @@ export default function App() {
           onClose={() => setIsUploadModalOpen(false)}
           onSaveBook={handleSaveBook}
           defaultAuthorName={authorProfile.name}
+          folders={folders}
         />
       )}
 

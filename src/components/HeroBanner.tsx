@@ -1,5 +1,6 @@
 import React from 'react';
-import { Search, Sparkles, BookOpenCheck, ArrowDownToLine, HeartHandshake } from 'lucide-react';
+import { Search, Sparkles, BookOpenCheck, ArrowDownToLine, HeartHandshake, Folder } from 'lucide-react';
+import { BookFolder } from '../types/book';
 
 interface HeroBannerProps {
   searchQuery: string;
@@ -10,6 +11,9 @@ interface HeroBannerProps {
   totalBooks: number;
   liberatedBooks: number;
   totalDownloads: number;
+  folders?: BookFolder[];
+  selectedFolderId?: string;
+  onFolderChange?: (folderId: string) => void;
 }
 
 export const HeroBanner: React.FC<HeroBannerProps> = ({
@@ -21,6 +25,9 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
   totalBooks,
   liberatedBooks,
   totalDownloads,
+  folders = [],
+  selectedFolderId = 'ALL',
+  onFolderChange,
 }) => {
   return (
     <section className="relative overflow-hidden pt-12 pb-10 bg-slate-950 border-b border-slate-900">
@@ -101,6 +108,42 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
               </button>
             ))}
           </div>
+
+          {/* Thematic Folders (Medicina, Terror, Romántica, etc.) */}
+          {folders.length > 0 && onFolderChange && (
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5 pt-3 border-t border-slate-900/80">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-amber-400 font-semibold flex items-center gap-1 mr-1">
+                <Folder className="w-3.5 h-3.5" />
+                <span>Temáticas:</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => onFolderChange('ALL')}
+                className={`px-3 py-1 text-xs rounded-lg transition-colors cursor-pointer ${
+                  selectedFolderId === 'ALL'
+                    ? 'bg-amber-400 text-slate-950 font-bold shadow-sm'
+                    : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-800'
+                }`}
+              >
+                Todas las carpetas
+              </button>
+              {folders.map((folder) => (
+                <button
+                  key={folder.id}
+                  type="button"
+                  onClick={() => onFolderChange(selectedFolderId === folder.id ? 'ALL' : folder.id)}
+                  className={`px-3 py-1 text-xs rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+                    selectedFolderId === folder.id
+                      ? 'bg-amber-400 text-slate-950 font-bold shadow-sm'
+                      : 'bg-slate-900/90 text-amber-200/90 hover:text-white border border-amber-500/30 hover:border-amber-500/60'
+                  }`}
+                  title={folder.description || `Ver libros de ${folder.name}`}
+                >
+                  <span>📁 {folder.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Proof & Catalog Numbers */}

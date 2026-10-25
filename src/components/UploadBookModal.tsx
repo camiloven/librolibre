@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { Book, PricingType, Chapter } from '../types/book';
+import { Book, PricingType, Chapter, BookFolder } from '../types/book';
 import { 
   X, Upload, FileText, Image as ImageIcon, Sparkles, Plus, Trash2, 
-  CheckCircle2, Loader2, RefreshCw, Eye
+  CheckCircle2, Loader2, RefreshCw, Eye, Folder, DollarSign
 } from 'lucide-react';
 import { extractCoverFromPdf, generateTextBookCover } from '../utils/pdfCoverExtractor';
 import { compressImage } from '../utils/imageCompressor';
@@ -12,12 +12,14 @@ interface UploadBookModalProps {
   onClose: () => void;
   onSaveBook: (newBook: Book) => void;
   defaultAuthorName: string;
+  folders?: BookFolder[];
 }
 
 export const UploadBookModal: React.FC<UploadBookModalProps> = ({
   onClose,
   onSaveBook,
   defaultAuthorName,
+  folders = [],
 }) => {
   // Book fields
   const [title, setTitle] = useState('');
@@ -25,16 +27,18 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
   const [author, setAuthor] = useState(defaultAuthorName || 'Camilo V.');
   const [synopsis, setSynopsis] = useState('');
   const [genre, setGenre] = useState('Ficción Literaria');
-  const [pageCount, setPageCount] = useState<number>(180);
+  const [selectedFolderId, setSelectedFolderId] = useState<string>('');
+  const [pageCount, setPageCount] = useState<number>(100);
   const [language, setLanguage] = useState('Español');
   const [publicationYear, setPublicationYear] = useState<number>(new Date().getFullYear());
   
-  // Pricing & Liberation in Chilean Pesos (CLP)
+  // Pricing & Liberation: NO DEFAULT PRICES - Author specifies exact CLP and USD values
   const [pricingType, setPricingType] = useState<PricingType>('paid');
-  const [price, setPrice] = useState<number>(7990); // $7.990 CLP
+  const [priceCLP, setPriceCLP] = useState<string>(''); // starts EMPTY as requested
+  const [priceUSD, setPriceUSD] = useState<string>(''); // starts EMPTY as requested
   const [isLiberated, setIsLiberated] = useState<boolean>(false);
   const [liberatedNote, setLiberatedNote] = useState('¡Edición especial liberada por el autor para acceso libre en Chile!');
-  const [allowPwywMin, setAllowPwywMin] = useState<number>(1000); // $1.000 CLP
+  const [allowPwywMin, setAllowPwywMin] = useState<string>('');
 
   // File upload state
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -223,6 +227,11 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
       }
     }
 
+    const chosenFolder = (folders || []).find((f) => f.id === selectedFolderId);
+    const parsedPriceCLP = isLiberated ? 0 : (priceCLP ? Number(priceCLP) : 0);
+    const parsedPriceUSD = isLiberated ? 0 : (priceUSD ? Number(priceUSD) : undefined);
+    const parsedPwyw = allowPwywMin ? Number(allowPwywMin) : undefined;
+
     const newBook: Book = {
       id: bookId,
       title: title.trim(),
@@ -230,14 +239,17 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
       author: author.trim() || 'Autor',
       synopsis: synopsis.trim() || 'Sinopsis disponible en la descarga completa.',
       genre,
+      folderId: selectedFolderId || undefined,
+      folderName: chosenFolder ? chosenFolder.name : undefined,
       coverUrl: coverUrl || coverPreview || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80',
-      pricingType: isLiberated ? 'paid' : pricingType,
-      price: pricingType === 'free' ? 0 : Number(price) || 0,
+      pricingType: isLiberated ? 'free' : pricingType,
+      price: parsedPriceCLP,
+      priceUSD: parsedPriceUSD,
       isLiberated: isLiberated,
       liberatedNote: isLiberated ? liberatedNote : undefined,
       liberatedAt: isLiberated ? new Date().toISOString() : undefined,
       downloadCount: 0,
-      pageCount: Number(pageCount) || 120,
+      pageCount: Number(pageCount) || 100,
       language,
       publicationYear: Number(publicationYear) || new Date().getFullYear(),
       fileType,
@@ -249,8 +261,8 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
       rating: 5.0,
       reviewCount: 0,
       createdAt: new Date().toISOString().split('T')[0],
-      tags: [genre, 'Novedad', language],
-      allowPwywMin: pricingType === 'pwyw' ? allowPwywMin : undefined,
+      tags: [genre, chosenFolder ? chosenFolder.name : 'General', language],
+      allowPwywMin: parsedPwyw,
     };
 
     onSaveBook(newBook);
@@ -394,7 +406,7 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Género / Categoría</label>
+                <label className="block text-xs text-slate-400 mb-1">Género Literario</label>
                 <select
                   value={genre}
                   onChange={(e) => setGenre(e.target.value)}
@@ -408,6 +420,28 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
                   <option value="Filosofía & Ensayo">Filosofía & Ensayo</option>
                   <option value="Historia">Historia</option>
                   <option value="Infantil & Juvenil">Infantil & Juvenil</option>
+                  <option value="Medicina & Salud">Medicina & Salud</option>
+                  <option value="Terror & Suspenso">Terror & Suspenso</option>
+                  <option value="Romántica">Romántica</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-400 mb-1 flex items-center gap-1.5">
+                  <Folder className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Carpeta Temática (Administrador)</span>
+                </label>
+                <select
+                  value={selectedFolderId}
+                  onChange={(e) => setSelectedFolderId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-950 text-sm text-white rounded-lg border border-slate-800 focus:outline-none focus:border-amber-500 cursor-pointer"
+                >
+                  <option value="">Sin carpeta asignada (Catálogo General)</option>
+                  {folders.map(f => (
+                    <option key={f.id} value={f.id}>
+                      📁 {f.name} {f.description ? `(${f.description})` : ''}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -645,18 +679,50 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
             </div>
 
             {pricingType === 'paid' && !isLiberated && (
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Precio de venta en Chile ($ CLP)</label>
-                <input
-                  type="number"
-                  step="100"
-                  min="500"
-                  value={price}
-                  onChange={(e) => setPrice(Number(e.target.value))}
-                  placeholder="Ej: 7990"
-                  className="w-48 px-3 py-2 bg-slate-900 text-sm text-white rounded-lg border border-slate-800 font-mono"
-                />
-                <span className="text-[11px] text-slate-500 ml-2">Pesos Chilenos</span>
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+                <div className="text-xs font-semibold text-amber-400 flex items-center gap-1.5">
+                  <DollarSign className="w-3.5 h-3.5" />
+                  <span>Valores del Libro (Indica los montos que tú desees, sin valores por defecto)</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-slate-300 mb-1">
+                      Valor en Pesos Chilenos ($ CLP)
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2.5 text-xs text-slate-500 font-mono">CLP $</span>
+                      <input
+                        type="number"
+                        step="100"
+                        min="0"
+                        value={priceCLP}
+                        onChange={(e) => setPriceCLP(e.target.value)}
+                        placeholder="Ej: 5000"
+                        className="w-full pl-16 pr-3 py-2 bg-slate-900 text-sm text-white placeholder-slate-600 rounded-lg border border-slate-800 font-mono focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+                    <span className="text-[11px] text-slate-500 mt-1 block">Para compras dentro de Chile</span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-slate-300 mb-1">
+                      Valor en Dólares ($ USD)
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2.5 text-xs text-slate-500 font-mono">USD $</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={priceUSD}
+                        onChange={(e) => setPriceUSD(e.target.value)}
+                        placeholder="Ej: 5.99"
+                        className="w-full pl-16 pr-3 py-2 bg-slate-900 text-sm text-white placeholder-slate-600 rounded-lg border border-slate-800 font-mono focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+                    <span className="text-[11px] text-slate-500 mt-1 block">Para compras internacionales (PayPal)</span>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -666,10 +732,10 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
                 <input
                   type="number"
                   step="500"
-                  min="500"
+                  min="0"
                   value={allowPwywMin}
-                  onChange={(e) => setAllowPwywMin(Number(e.target.value))}
-                  placeholder="Ej: 1000"
+                  onChange={(e) => setAllowPwywMin(e.target.value)}
+                  placeholder="Ej: 1000 (o vacío para $0)"
                   className="w-48 px-3 py-2 bg-slate-900 text-sm text-white rounded-lg border border-slate-800 font-mono"
                 />
                 <span className="text-[11px] text-slate-500 ml-2">Pesos Chilenos</span>

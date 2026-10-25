@@ -13,9 +13,12 @@ export interface Book {
   author: string;
   synopsis: string;
   genre: string;
+  folderId?: string; // ID of the folder/thematic collection (Medicina, Terror, Romántica...)
+  folderName?: string; // Name of the folder
   coverUrl: string;
   pricingType: PricingType;
-  price: number; // In CLP (Pesos Chilenos) or base currency
+  price: number; // In CLP (Pesos Chilenos)
+  priceUSD?: number; // In USD (Dólares estadounidenses)
   isLiberated: boolean; // Flag for "Liberado gratis por el autor"
   liberatedNote?: string;
   liberatedAt?: string;
@@ -36,6 +39,15 @@ export interface Book {
   tags: string[];
   allowPwywMin?: number;
   featured?: boolean;
+}
+
+export interface BookFolder {
+  id: string;
+  name: string; // e.g. "Medicina", "Terror", "Romántica", "Ciencia Ficción"
+  description?: string;
+  color?: string; // Color identifier: "emerald" | "rose" | "purple" | "amber" | "sky" | "red" | "indigo"
+  iconName?: string;
+  createdAt: string;
 }
 
 export interface ChileanPaymentConfig {
@@ -124,4 +136,20 @@ export function formatCurrency(amount: number, currency: string = 'CLP'): string
     return `$${Math.round(amount).toLocaleString('es-CL')} CLP`;
   }
   return `$${amount.toFixed(2)} USD`;
+}
+
+export function formatCLP(amount: number): string {
+  return `$${Math.round(amount || 0).toLocaleString('es-CL')} CLP`;
+}
+
+export function formatUSD(amount: number): string {
+  return `$${Number(amount || 0).toFixed(2)} USD`;
+}
+
+export function formatBothPrices(priceCLP: number, priceUSD?: number): string {
+  if (priceCLP === 0 && (!priceUSD || priceUSD === 0)) return 'Gratis';
+  const parts: string[] = [];
+  if (priceCLP > 0) parts.push(formatCLP(priceCLP));
+  if (priceUSD && priceUSD > 0) parts.push(formatUSD(priceUSD));
+  return parts.length > 0 ? parts.join(' · ') : '$0 CLP';
 }

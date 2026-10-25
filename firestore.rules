@@ -19,6 +19,12 @@ service cloud.firestore {
       allow write: if true;
     }
 
+    // Thematic Folders / Categories created by Admin (Medicina, Terror, Romántica...)
+    match /folders/{folderId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
     // Transactions and download records
     match /transactions/{transactionId} {
       allow read: if true;

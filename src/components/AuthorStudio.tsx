@@ -1,19 +1,22 @@
 import React, { useState } from 'react';
-import { Book, AuthorProfile, Coupon, Transaction, formatCurrency } from '../types/book';
+import { Book, AuthorProfile, Coupon, Transaction, BookFolder, formatCurrency, formatBothPrices } from '../types/book';
 import { 
   BookOpen, Sparkles, Plus, Settings, Tag, ArrowDownToLine, 
   DollarSign, Trash2, Edit3, Download, Check, ShieldAlert, ShieldCheck,
   Building2, Smartphone, CreditCard, Lock, KeyRound, Copy, Camera,
-  Upload, Loader2, FileText, Search, LayoutGrid, List, X, Library, RefreshCw
+  Upload, Loader2, FileText, Search, LayoutGrid, List, X, Library, RefreshCw, Folder
 } from 'lucide-react';
 import { BookshelfView } from './BookshelfView';
 import { downloadBookFile } from '../utils/fileDownloader';
+import { FolderManageModal } from './FolderManageModal';
+import { EditBookModal } from './EditBookModal';
 
 interface AuthorStudioProps {
   books: Book[];
   authorProfile: AuthorProfile;
   coupons: Coupon[];
   transactions: Transaction[];
+  folders?: BookFolder[];
   onOpenUpload: () => void;
   onOpenPaymentSettings: () => void;
   onOpenEditProfile: () => void;
@@ -26,6 +29,10 @@ interface AuthorStudioProps {
   onDeleteAllDemoBooks?: () => void;
   onCleanDuplicates?: () => void;
   onUpdateBookFile?: (bookId: string, fileInfo: { downloadUrl: string; fileName: string; fileSize: string; fileType: string }) => Promise<void>;
+  onSaveBookEdit?: (updatedBook: Book) => void;
+  onSaveFolder?: (folder: BookFolder) => void;
+  onDeleteFolder?: (folderId: string) => void;
+  onMoveBookToFolder?: (bookId: string, folderId: string | undefined, folderName: string | undefined) => void;
 }
 
 export const AuthorStudio: React.FC<AuthorStudioProps> = ({
@@ -33,6 +40,7 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
   authorProfile,
   coupons,
   transactions,
+  folders = [],
   onOpenUpload,
   onOpenPaymentSettings,
   onOpenEditProfile,
@@ -45,12 +53,19 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
   onDeleteAllDemoBooks,
   onCleanDuplicates,
   onUpdateBookFile,
+  onSaveBookEdit,
+  onSaveFolder,
+  onDeleteFolder,
+  onMoveBookToFolder,
 }) => {
   const [activeTab, setActiveTab] = useState<'books' | 'payments' | 'coupons' | 'history'>('books');
   const [filterType, setFilterType] = useState<'all' | 'liberated' | 'paid' | 'free'>('all');
+  const [selectedFolderFilter, setSelectedFolderFilter] = useState<string>('all');
   const [studioViewMode, setStudioViewMode] = useState<'bookshelf' | 'grid4' | 'table'>('bookshelf');
   const [bookSearchQuery, setBookSearchQuery] = useState('');
   const [uploadingBookId, setUploadingBookId] = useState<string | null>(null);
+  const [editingBook, setEditingBook] = useState<Book | null>(null);
+  const [isFolderManageOpen, setIsFolderManageOpen] = useState(false);
 
   const handleAttachFileToBook = async (bookId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -110,12 +125,17 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
     if (filterType === 'paid' && (b.isLiberated || b.pricingType !== 'paid')) return false;
     if (filterType === 'free' && b.pricingType !== 'free') return false;
 
+    if (selectedFolderFilter !== 'all') {
+      if (b.folderId !== selectedFolderFilter) return false;
+    }
+
     if (bookSearchQuery.trim()) {
       const q = bookSearchQuery.toLowerCase().trim();
       const matches =
         b.title.toLowerCase().includes(q) ||
         b.author.toLowerCase().includes(q) ||
         b.genre.toLowerCase().includes(q) ||
+        (b.folderName && b.folderName.toLowerCase().includes(q)) ||
         (b.tags && b.tags.some((t) => t.toLowerCase().includes(q))) ||
         (b.fileType && b.fileType.toLowerCase().includes(q));
       if (!matches) return false;
@@ -193,6 +213,15 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
           >
             <Settings className="w-4 h-4 text-amber-400" />
             <span>Configurar Pagos Chile & PIN</span>
+          </button>
+
+          <button
+            onClick={() => setIsFolderManageOpen(true)}
+            className="px-3.5 py-2 text-xs font-semibold text-amber-300 bg-amber-950/60 hover:bg-amber-900/80 border border-amber-500/40 rounded-xl transition-colors flex items-center gap-2 cursor-pointer shadow-sm"
+            title="Crear y administrar carpetas temáticas de libros (Solo Administrador)"
+          >
+            <Folder className="w-4 h-4 text-amber-400" />
+            <span>📁 Carpetas ({folders.length})</span>
           </button>
 
           <button
@@ -470,17 +499,65 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
                 </button>
               </div>
             </div>
+
+            {/* Folder filter pills */}
+            {folders.length > 0 && (
+              <div className="w-full flex items-center gap-1.5 overflow-x-auto pt-2 border-t border-slate-800/60 text-xs">
+                <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider shrink-0 flex items-center gap-1">
+                  <Folder className="w-3 h-3 text-amber-400" />
+                  <span>Temáticas:</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedFolderFilter('all')}
+                  className={`px-2.5 py-1 rounded-md text-[11px] cursor-pointer whitespace-nowrap transition-colors ${
+                    selectedFolderFilter === 'all'
+                      ? 'bg-amber-400 text-slate-950 font-bold'
+                      : 'text-slate-400 hover:text-white bg-slate-950/60 border border-slate-800'
+                  }`}
+                >
+                  Todas ({books.length})
+                </button>
+                {folders.map(f => {
+                  const count = books.filter(b => b.folderId === f.id).length;
+                  return (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => setSelectedFolderFilter(selectedFolderFilter === f.id ? 'all' : f.id)}
+                      className={`px-2.5 py-1 rounded-md text-[11px] cursor-pointer whitespace-nowrap transition-colors flex items-center gap-1 ${
+                        selectedFolderFilter === f.id
+                          ? 'bg-amber-400 text-slate-950 font-bold shadow-sm'
+                          : 'text-slate-300 hover:text-white bg-slate-950/60 border border-slate-800'
+                      }`}
+                    >
+                      <span>📁 {f.name}</span>
+                      <span className="font-mono text-[10px] opacity-70">({count})</span>
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => setIsFolderManageOpen(true)}
+                  className="px-2 py-1 rounded-md text-[11px] text-amber-400 hover:text-amber-300 cursor-pointer ml-auto flex items-center gap-1 shrink-0 font-medium"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>Gestionar Carpetas</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {filteredBooks.length === 0 ? (
             <div className="p-12 text-center bg-slate-900/50 rounded-xl border border-slate-800">
               <BookOpen className="w-10 h-10 text-slate-600 mx-auto mb-2" />
-              <p className="text-sm font-medium text-slate-300">No hay libros que coincidan con la búsqueda</p>
+              <p className="text-sm font-medium text-slate-300">No hay libros que coincidan con la búsqueda o carpeta</p>
               <button
                 type="button"
                 onClick={() => {
                   setBookSearchQuery('');
                   setFilterType('all');
+                  setSelectedFolderFilter('all');
                 }}
                 className="mt-3 px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-amber-400 rounded-lg cursor-pointer"
               >
@@ -491,17 +568,14 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
             /* ESTANTERÍA DE MADERA CLÁSICA */
             <BookshelfView
               books={filteredBooks}
-              onSelectBook={(book) => {
-                // Trigger preview or details
-              }}
-              onPreviewBook={(book) => {
-                // Reading preview
-              }}
+              onSelectBook={(book) => {}}
+              onPreviewBook={(book) => {}}
               onDownloadBook={(book) => {
                 downloadBookFile(book);
               }}
               isAuthorMode={true}
               onToggleLiberate={onToggleLiberate}
+              onEditBook={(book) => setEditingBook(book)}
               onRequestDeleteBook={onRequestDeleteBook}
               onAttachFile={handleAttachFileToBook}
               uploadingBookId={uploadingBookId}
@@ -525,7 +599,7 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
                     />
 
                     {/* Status Chip */}
-                    <div className="absolute top-2 left-2">
+                    <div className="absolute top-2 left-2 flex flex-col items-start gap-1">
                       {b.isLiberated ? (
                         <span className="px-2 py-0.5 rounded-md bg-emerald-950/90 border border-emerald-500/50 text-emerald-300 font-bold text-[10px] tracking-wide shadow-md flex items-center gap-1 backdrop-blur-sm">
                           <Sparkles className="w-2.5 h-2.5" />
@@ -537,7 +611,14 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
                         </span>
                       ) : (
                         <span className="px-2 py-0.5 rounded-md bg-slate-950/90 border border-slate-700 text-amber-300 font-mono font-bold text-[10px] tracking-wide shadow-md backdrop-blur-sm">
-                          {formatCurrency(b.price, 'CLP')}
+                          {formatBothPrices(b.price, b.priceUSD)}
+                        </span>
+                      )}
+
+                      {b.folderName && (
+                        <span className="px-1.5 py-0.5 rounded-md bg-amber-950/90 border border-amber-500/40 text-amber-200 text-[9px] font-semibold flex items-center gap-1 backdrop-blur-sm shadow">
+                          <Folder className="w-2.5 h-2.5 text-amber-400" />
+                          <span className="max-w-[90px] truncate">{b.folderName}</span>
                         </span>
                       )}
                     </div>
@@ -598,6 +679,17 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
 
                     {/* Quick Management Buttons */}
                     <div className="mt-3 pt-2.5 border-t border-slate-800/80 space-y-2">
+                      {/* Edit Book Modal Trigger (Values, liberation, folder) */}
+                      <button
+                        type="button"
+                        onClick={() => setEditingBook(b)}
+                        className="w-full py-1.5 px-2.5 rounded-lg text-xs font-semibold bg-amber-950/40 hover:bg-amber-900/60 text-amber-300 border border-amber-500/40 cursor-pointer transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+                        title="Modificar si lo liberas o le pones valor en CLP/USD, y asignar carpeta"
+                      >
+                        <Edit3 className="w-3 h-3 text-amber-400" />
+                        <span>Editar Valores & Carpeta</span>
+                      </button>
+
                       {/* One-Click Liberate Button */}
                       {b.pricingType === 'free' ? (
                         <div className="text-center py-1 text-[11px] text-slate-500 font-mono">
@@ -653,9 +745,10 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
                   <thead className="bg-slate-950/80 text-slate-400 border-b border-slate-800 uppercase font-mono tracking-wider">
                     <tr>
                       <th className="py-3 px-4">Portada & Obra</th>
-                      <th className="py-3 px-4">Género / Archivo</th>
-                      <th className="py-3 px-4">Precio Oficial Chile</th>
-                      <th className="py-3 px-4">Estado de Liberación</th>
+                      <th className="py-3 px-4">Género / Carpeta</th>
+                      <th className="py-3 px-4">Valores (CLP & USD)</th>
+                      <th className="py-3 px-4">Liberación</th>
+                      <th className="py-3 px-4 text-center">Modificar</th>
                       <th className="py-3 px-4 text-center">Acción Inmediata</th>
                       <th className="py-3 px-4 text-center">Archivo Digital</th>
                       <th className="py-3 px-4 text-right">Descargas</th>
@@ -681,6 +774,12 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
 
                         <td className="py-3.5 px-4">
                           <div>{b.genre}</div>
+                          {b.folderName && (
+                            <div className="inline-flex items-center gap-1 text-[10px] text-amber-300 font-semibold bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-600/30 my-0.5">
+                              <Folder className="w-2.5 h-2.5 text-amber-400" />
+                              <span>{b.folderName}</span>
+                            </div>
+                          )}
                           <div className="font-mono text-[11px] text-slate-500">{b.fileType} · {b.fileSize}</div>
                           {b.downloadUrl ? (
                             <div className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-medium mt-1">
@@ -700,7 +799,7 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
                           ) : b.pricingType === 'pwyw' ? (
                             <span className="text-amber-400">Aporte (min {formatCurrency(b.allowPwywMin || 1000, 'CLP')})</span>
                           ) : (
-                            <span className="text-white font-semibold">{formatCurrency(b.price, 'CLP')}</span>
+                            <span className="text-white font-semibold">{formatBothPrices(b.price, b.priceUSD)}</span>
                           )}
                         </td>
 
@@ -715,6 +814,18 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
                           ) : (
                             <span className="text-slate-400 font-medium">Bloqueado a Pago</span>
                           )}
+                        </td>
+
+                        <td className="py-3.5 px-4 text-center">
+                          <button
+                            type="button"
+                            onClick={() => setEditingBook(b)}
+                            className="px-2.5 py-1.5 text-xs text-amber-300 hover:text-white hover:bg-amber-500/20 border border-amber-500/40 rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1 mx-auto font-medium"
+                            title="Modificar si lo liberas o le pones valor en CLP/USD, y asignar carpeta"
+                          >
+                            <Edit3 className="w-3 h-3 text-amber-400" />
+                            <span>Editar</span>
+                          </button>
                         </td>
 
                         <td className="py-3.5 px-4 text-center">
@@ -1064,6 +1175,29 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Folder Management Modal */}
+      {isFolderManageOpen && onSaveFolder && onDeleteFolder && onMoveBookToFolder && (
+        <FolderManageModal
+          folders={folders}
+          books={books}
+          onClose={() => setIsFolderManageOpen(false)}
+          onSaveFolder={onSaveFolder}
+          onDeleteFolder={onDeleteFolder}
+          onMoveBookToFolder={onMoveBookToFolder}
+        />
+      )}
+
+      {/* Edit Book Modal */}
+      {editingBook && onSaveBookEdit && (
+        <EditBookModal
+          book={editingBook}
+          folders={folders}
+          onClose={() => setEditingBook(null)}
+          onSave={onSaveBookEdit}
+          onSaveFolder={onSaveFolder}
+        />
+      )}
     </div>
   );
 };
