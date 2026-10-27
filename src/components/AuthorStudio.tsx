@@ -77,42 +77,44 @@ export const AuthorStudio: React.FC<AuthorStudioProps> = ({
       const ext = (file.name.split('.').pop() || 'PDF').toUpperCase();
       setUploadingBookId(bookId);
       try {
-        const reader = new FileReader();
-        reader.onload = async () => {
-          try {
-            const base64Data = reader.result as string;
+        const arrayBuffer = await file.arrayBuffer();
 
-            // 1. Cache file in IndexedDB immediately
-            saveBookFileToCache(bookId, file, file.name).catch(() => {});
-            // 2. Save full binary chunks into Cloud Firestore
-            saveBookFileChunksToFirestore(bookId, file.name, ext, base64Data).catch(() => {});
+        // Safe chunked Base64 conversion
+        const bytes = new Uint8Array(arrayBuffer);
+        let binary = '';
+        const chunkSize = 0x8000;
+        for (let i = 0; i < bytes.byteLength; i += chunkSize) {
+          binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunkSize, bytes.byteLength)) as any);
+        }
+        const mimeType = ext === 'PDF' ? 'application/pdf' : 'application/octet-stream';
+        const base64Data = `data:${mimeType};base64,${btoa(binary)}`;
 
-            const res = await fetch('/api/upload-book-file', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                fileName: file.name,
-                fileData: base64Data,
-                fileType: ext,
-              }),
-            });
-            const data = await res.json();
-            if (data.success && data.downloadUrl && onUpdateBookFile) {
-              await onUpdateBookFile(bookId, {
-                downloadUrl: data.downloadUrl,
-                fileName: file.name,
-                fileSize: data.fileSize || `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-                fileType: ext,
-              });
-            }
-          } catch (err) {
-            console.error('Error attaching file to book:', err);
-          } finally {
-            setUploadingBookId(null);
-          }
-        };
-        reader.readAsDataURL(file);
+        // 1. Cache file in IndexedDB immediately
+        saveBookFileToCache(bookId, file, file.name).catch(() => {});
+        // 2. Save full binary chunks into Cloud Firestore
+        saveBookFileChunksToFirestore(bookId, file.name, ext, base64Data).catch(() => {});
+
+        const res = await fetch('/api/upload-book-file', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileName: file.name,
+            fileData: base64Data,
+            fileType: ext,
+          }),
+        });
+        const data = await res.json();
+        if (data.success && data.downloadUrl && onUpdateBookFile) {
+          await onUpdateBookFile(bookId, {
+            downloadUrl: data.downloadUrl,
+            fileName: file.name,
+            fileSize: data.fileSize || `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+            fileType: ext,
+          });
+        }
       } catch (err) {
+        console.error('Error attaching file to book:', err);
+      } finally {
         setUploadingBookId(null);
       }
     }

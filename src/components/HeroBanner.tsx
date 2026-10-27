@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Sparkles, BookOpenCheck, ArrowDownToLine, HeartHandshake, Folder } from 'lucide-react';
+import { Search, Sparkles, BookOpenCheck, ArrowDownToLine, HeartHandshake, Folder, Cloud, ExternalLink } from 'lucide-react';
 import { BookFolder } from '../types/book';
 
 interface HeroBannerProps {
@@ -143,8 +143,30 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
                   title={folder.description || `Ver libros de ${folder.name}`}
                 >
                   <span>📁 {folder.name}</span>
+                  {folder.teraboxUrl && <span className="text-[10px] text-sky-400 font-mono">☁️</span>}
                 </button>
               ))}
+
+              {/* Quick Link to TeraBox if currently selected folder has one */}
+              {(() => {
+                const activeFolder = folders.find((f) => f.id === selectedFolderId);
+                if (activeFolder?.teraboxUrl) {
+                  return (
+                    <a
+                      href={activeFolder.teraboxUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1 text-xs font-semibold rounded-lg bg-sky-500/25 hover:bg-sky-500/35 text-sky-300 hover:text-white border border-sky-400/50 transition-colors flex items-center gap-1.5 shadow-sm ml-1"
+                      title={`Abrir carpeta "${activeFolder.name}" en TeraBox (1024 GB)`}
+                    >
+                      <Cloud className="w-3.5 h-3.5 text-sky-400" />
+                      <span>Descargar desde TeraBox ({activeFolder.name})</span>
+                      <ExternalLink className="w-3 h-3 text-sky-400" />
+                    </a>
+                  );
+                }
+                return null;
+              })()}
 
               {onOpenFolderManage && (
                 <button

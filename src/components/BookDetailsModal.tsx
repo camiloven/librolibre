@@ -1,6 +1,6 @@
 import React from 'react';
 import { Book, formatCurrency, formatBothPrices } from '../types/book';
-import { X, BookOpen, Download, Star, Sparkles, CheckCircle2, ShieldCheck, FileText, Calendar, Globe, Layers, Folder } from 'lucide-react';
+import { X, BookOpen, Download, Star, Sparkles, CheckCircle2, ShieldCheck, FileText, Calendar, Globe, Layers, Folder, Cloud, ExternalLink } from 'lucide-react';
 
 interface BookDetailsModalProps {
   book: Book | null;
@@ -52,9 +52,24 @@ export const BookDetailsModal: React.FC<BookDetailsModalProps> = ({
               />
             </div>
 
+            {/* TeraBox Cloud Link Button */}
+            {book.teraboxUrl && (
+              <a
+                href={book.teraboxUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 w-full p-2.5 bg-sky-950/40 border border-sky-500/40 hover:border-sky-400 text-sky-300 hover:text-sky-200 rounded-xl text-center flex items-center justify-center gap-2 text-xs font-semibold transition-colors shadow-sm cursor-pointer"
+                title="Abrir copia original completa en la carpeta especial de TeraBox"
+              >
+                <Cloud className="w-4 h-4 text-sky-400 shrink-0" />
+                <span>☁️ Abrir en TeraBox (1 TB)</span>
+                <ExternalLink className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+              </a>
+            )}
+
             {/* Author Liberation Box */}
             {isLiberated && (
-              <div className="mt-5 w-full p-3.5 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-center">
+              <div className="mt-4 w-full p-3.5 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-center">
                 <div className="flex items-center justify-center gap-1.5 text-emerald-400 text-xs font-semibold">
                   <Sparkles className="w-4 h-4" />
                   <span>Obra Liberada por el Autor</span>

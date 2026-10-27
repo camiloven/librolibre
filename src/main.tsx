@@ -27,6 +27,15 @@ if (typeof window !== 'undefined' && typeof Node === 'function' && Node.prototyp
   };
 }
 
+// Ensure mobile service workers check for latest applet bundle immediately
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (const reg of registrations) {
+      reg.update().catch(() => {});
+    }
+  });
+}
+
 createRoot(document.getElementById('root')!).render(
   <ErrorBoundary>
     <App />

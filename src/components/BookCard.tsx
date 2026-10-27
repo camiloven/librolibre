@@ -60,7 +60,7 @@ export const BookCard: React.FC<BookCardProps> = ({
         </div>
 
         {/* Status Chip Overlay */}
-        <div className="absolute top-2.5 left-2.5">
+        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 items-start">
           {isLiberated ? (
             <span className="px-2 py-0.5 rounded-md bg-emerald-950/90 border border-emerald-500/40 text-emerald-300 font-semibold text-[10px] tracking-wide shadow-md flex items-center gap-1 backdrop-blur-sm">
               <Sparkles className="w-2.5 h-2.5" />
@@ -71,6 +71,12 @@ export const BookCard: React.FC<BookCardProps> = ({
               GRATIS
             </span>
           ) : null}
+          {book.teraboxUrl && (
+            <span className="px-2 py-0.5 rounded-md bg-sky-950/90 border border-sky-400/40 text-sky-300 font-semibold text-[9px] tracking-wider shadow-md backdrop-blur-sm flex items-center gap-1">
+              <span>☁️</span>
+              <span>TERABOX</span>
+            </span>
+          )}
         </div>
 
         {/* Author Quick Toggle Switch Overlay (if in Author Mode) */}

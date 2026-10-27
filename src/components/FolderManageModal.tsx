@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Book, BookFolder } from '../types/book';
 import { 
   FolderPlus, Folder, Trash2, Edit3, X, Check, BookOpen, 
-  Sparkles, Plus, AlertCircle, Heart, Skull, Activity, ShieldCheck
+  Sparkles, Plus, AlertCircle, Heart, Skull, Activity, ShieldCheck,
+  Cloud, ExternalLink
 } from 'lucide-react';
 
 interface FolderManageModalProps {
@@ -58,6 +59,7 @@ export const FolderManageModal: React.FC<FolderManageModalProps> = ({
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderDesc, setNewFolderDesc] = useState('');
   const [newFolderColor, setNewFolderColor] = useState('emerald');
+  const [newFolderTeraboxUrl, setNewFolderTeraboxUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Sync selectedFolderId when folders list updates
@@ -71,6 +73,7 @@ export const FolderManageModal: React.FC<FolderManageModalProps> = ({
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
+  const [editTeraboxUrl, setEditTeraboxUrl] = useState('');
 
   const currentFolder = folders.find((f) => f.id === selectedFolderId);
   const booksInCurrentFolder = books.filter((b) => b.folderId === selectedFolderId);
@@ -108,6 +111,7 @@ export const FolderManageModal: React.FC<FolderManageModalProps> = ({
         name: newFolderName.trim(),
         description: newFolderDesc.trim() || undefined,
         color: newFolderColor,
+        teraboxUrl: newFolderTeraboxUrl.trim() || undefined,
         createdAt: new Date().toISOString().split('T')[0],
       };
 
@@ -115,6 +119,7 @@ export const FolderManageModal: React.FC<FolderManageModalProps> = ({
       setSelectedFolderId(folderId);
       setNewFolderName('');
       setNewFolderDesc('');
+      setNewFolderTeraboxUrl('');
       setIsCreatingNew(false);
     } finally {
       setIsSubmitting(false);
@@ -126,6 +131,7 @@ export const FolderManageModal: React.FC<FolderManageModalProps> = ({
     setEditingFolderId(f.id);
     setEditName(f.name);
     setEditDesc(f.description || '');
+    setEditTeraboxUrl(f.teraboxUrl || '');
   };
 
   const handleSaveEdit = async () => {
@@ -133,6 +139,7 @@ export const FolderManageModal: React.FC<FolderManageModalProps> = ({
     await updateFolderFn(editingFolderId, {
       name: editName.trim(),
       description: editDesc.trim(),
+      teraboxUrl: editTeraboxUrl.trim() || undefined,
     });
     setEditingFolderId(null);
   };
@@ -282,6 +289,20 @@ export const FolderManageModal: React.FC<FolderManageModalProps> = ({
                 </div>
 
                 <div>
+                  <label className="block text-[11px] text-sky-400 mb-1 flex items-center justify-between font-semibold">
+                    <span>☁️ Enlace Carpeta Especial TeraBox (opcional)</span>
+                    <span className="text-[10px] text-sky-400/80 font-mono">1 TB Nube</span>
+                  </label>
+                  <input
+                    type="url"
+                    value={newFolderTeraboxUrl}
+                    onChange={(e) => setNewFolderTeraboxUrl(e.target.value)}
+                    placeholder="https://terabox.com/s/... (Carpeta con todos los libros de este tema)"
+                    className="w-full px-3 py-1.5 bg-slate-950 text-xs text-white rounded-lg border border-slate-800 font-mono focus:border-sky-400 focus:outline-none"
+                  />
+                </div>
+
+                <div>
                   <label className="block text-[11px] text-slate-400 mb-1">Color identificador</label>
                   <div className="flex gap-2">
                     {AVAILABLE_COLORS.map((col) => (
@@ -356,6 +377,13 @@ export const FolderManageModal: React.FC<FolderManageModalProps> = ({
                             placeholder="Descripción"
                             className="w-full px-2.5 py-1 bg-slate-950 text-xs text-slate-300 rounded border border-slate-800"
                           />
+                          <input
+                            type="url"
+                            value={editTeraboxUrl}
+                            onChange={(e) => setEditTeraboxUrl(e.target.value)}
+                            placeholder="☁️ Enlace TeraBox (https://terabox.com/s/...)"
+                            className="w-full px-2.5 py-1 bg-slate-950 text-xs text-sky-300 placeholder-slate-600 rounded border border-slate-800 focus:border-sky-500"
+                          />
                           <div className="flex justify-end gap-2">
                             <button
                               type="button"
@@ -380,7 +408,14 @@ export const FolderManageModal: React.FC<FolderManageModalProps> = ({
                               <Folder className="w-4 h-4" />
                             </div>
                             <div className="min-w-0">
-                              <h5 className="font-semibold text-xs text-white truncate">{f.name}</h5>
+                              <div className="flex items-center gap-1.5">
+                                <h5 className="font-semibold text-xs text-white truncate">{f.name}</h5>
+                                {f.teraboxUrl && (
+                                  <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.2 bg-sky-500/20 border border-sky-500/30 text-sky-300 rounded font-mono shrink-0">
+                                    ☁️ TeraBox
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-[11px] text-slate-400 truncate">{count} {count === 1 ? 'libro' : 'libros'}</p>
                             </div>
                           </div>
@@ -416,7 +451,7 @@ export const FolderManageModal: React.FC<FolderManageModalProps> = ({
           <div className="md:col-span-7 p-5 space-y-4 flex flex-col justify-between">
             {currentFolder ? (
               <div className="space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div className="flex items-start justify-between pb-3 border-b border-slate-800 gap-3">
                   <div>
                     <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-semibold">
                       Contenido de la Carpeta
@@ -431,6 +466,19 @@ export const FolderManageModal: React.FC<FolderManageModalProps> = ({
                       <p className="text-xs text-slate-400 mt-0.5">{currentFolder.description}</p>
                     )}
                   </div>
+                  {currentFolder.teraboxUrl && (
+                    <a
+                      href={currentFolder.teraboxUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-500/20 border border-sky-400/40 text-sky-300 hover:bg-sky-500/30 hover:text-sky-200 text-xs font-semibold transition-colors shrink-0 shadow-sm"
+                      title="Abrir carpeta especial en TeraBox"
+                    >
+                      <Cloud className="w-3.5 h-3.5 text-sky-400" />
+                      <span>Abrir en TeraBox</span>
+                      <ExternalLink className="w-3 h-3 text-sky-400" />
+                    </a>
+                  )}
                 </div>
 
                 <div>

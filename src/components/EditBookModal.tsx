@@ -37,6 +37,7 @@ export const EditBookModal: React.FC<EditBookModalProps> = ({
 
   // Folder Assignment
   const [folderId, setFolderId] = useState<string>(book.folderId || '');
+  const [teraboxUrl, setTeraboxUrl] = useState<string>(book.teraboxUrl || '');
 
   // Liberation & Pricing
   const [isLiberated, setIsLiberated] = useState<boolean>(Boolean(book.isLiberated));
@@ -86,6 +87,7 @@ export const EditBookModal: React.FC<EditBookModalProps> = ({
       genre: genre.trim(),
       folderId: folderId ? folderId : undefined,
       folderName: selectedFolder ? selectedFolder.name : undefined,
+      teraboxUrl: teraboxUrl.trim() || undefined,
       isLiberated: isLiberated,
       pricingType: isLiberated ? 'free' : pricingType,
       price: parsedPriceCLP,
@@ -289,6 +291,29 @@ export const EditBookModal: React.FC<EditBookModalProps> = ({
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* SECTION 2.5: TERABOX CLOUD LINK */}
+          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-sky-400 font-mono flex items-center gap-2">
+                <span>☁️</span>
+                <span>Enlace TeraBox (Carpeta Especial o Descarga Nube)</span>
+              </h4>
+              <span className="text-[10px] text-sky-300 font-mono px-1.5 py-0.5 rounded bg-sky-950 border border-sky-800">
+                1 TB Gratis
+              </span>
+            </div>
+            <input
+              type="url"
+              value={teraboxUrl}
+              onChange={(e) => setTeraboxUrl(e.target.value)}
+              placeholder="https://terabox.com/s/... o https://terabox.app/s/..."
+              className="w-full px-3 py-2 bg-slate-900 text-xs text-white rounded-lg border border-slate-800 focus:border-sky-400 focus:outline-none font-mono"
+            />
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Pega aquí el enlace público o carpeta compartida de TeraBox para que los lectores descarguen la obra completa directamente desde la nube.
+            </p>
           </div>
 
           {/* SECTION 3: METADATA */}

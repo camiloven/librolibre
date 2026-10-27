@@ -4,7 +4,8 @@ import { downloadBookFile } from '../utils/fileDownloader';
 import { recordTransaction } from '../utils/storage';
 import { 
   X, Download, CheckCircle2, Building2, Smartphone, 
-  Sparkles, Coffee, ShieldCheck, Tag, ArrowRight, Copy, Check, CreditCard
+  Sparkles, Coffee, ShieldCheck, Tag, ArrowRight, Copy, Check, CreditCard,
+  Cloud, ExternalLink
 } from 'lucide-react';
 
 interface CheckoutModalProps {
@@ -195,6 +196,51 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </div>
             </div>
 
+            {/* TeraBox Cloud Download Option */}
+            {book.teraboxUrl ? (
+              <div className="mb-6 p-4 rounded-xl bg-sky-950/40 border border-sky-500/40 text-left space-y-2">
+                <div className="flex items-center gap-2 text-sky-400 font-semibold text-xs">
+                  <Cloud className="w-4 h-4 text-sky-400 shrink-0" />
+                  <span>Copia Maestra en la Nube (TeraBox · Carpeta Especial)</span>
+                </div>
+                <p className="text-xs text-sky-200/80 leading-relaxed">
+                  El autor ha subido una copia original completa de este libro a su carpeta especial en TeraBox (1024 GB). Puedes abrirla o descargarla a máxima velocidad directamente desde su enlace oficial:
+                </p>
+                <div className="pt-1">
+                  <a
+                    href={book.teraboxUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2 w-full px-5 py-3 text-xs font-bold bg-sky-500 hover:bg-sky-400 text-slate-950 rounded-xl transition-colors shadow-lg cursor-pointer"
+                  >
+                    <Cloud className="w-4 h-4" />
+                    <span>Descargar desde TeraBox (Carpeta Especial)</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              </div>
+            ) : authorProfile.teraboxLibraryUrl ? (
+              <div className="mb-6 p-4 rounded-xl bg-sky-950/30 border border-sky-500/30 text-left space-y-2">
+                <div className="flex items-center gap-2 text-sky-400 font-semibold text-xs">
+                  <Cloud className="w-4 h-4 text-sky-400 shrink-0" />
+                  <span>Bóveda Maestra en TeraBox</span>
+                </div>
+                <p className="text-xs text-sky-200/80">
+                  Accede a la biblioteca completa de respaldos del autor alojada en TeraBox Cloud:
+                </p>
+                <a
+                  href={authorProfile.teraboxLibraryUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 text-xs font-bold bg-sky-600/30 hover:bg-sky-600/40 text-sky-200 border border-sky-400/30 rounded-xl transition-colors"
+                >
+                  <Cloud className="w-4 h-4" />
+                  <span>Abrir Bóveda TeraBox del Autor</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            ) : null}
+
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <button
                 onClick={handleManualDownloadAgain}
@@ -202,7 +248,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 className="px-5 py-2.5 text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md"
               >
                 <Download className="w-4 h-4" />
-                <span>{isDownloading ? 'Generando...' : 'Descargar de nuevo'}</span>
+                <span>{isDownloading ? 'Generando...' : 'Descargar archivo local'}</span>
               </button>
 
               <button

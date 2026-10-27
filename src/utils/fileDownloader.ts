@@ -251,11 +251,11 @@ export function createRealPdfBook(
 
   let nextY = 44 + synopsisLines.length * 5.5 + 12;
 
-  // Technical metadata card
+  const cardHeight = book.teraboxUrl ? 46 : 40;
   doc.setFillColor(248, 250, 252);
-  doc.roundedRect(margin, nextY, contentWidth, 40, 2, 2, 'F');
+  doc.roundedRect(margin, nextY, contentWidth, cardHeight, 2, 2, 'F');
   doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(margin, nextY, contentWidth, 40, 2, 2, 'S');
+  doc.roundedRect(margin, nextY, contentWidth, cardHeight, 2, 2, 'S');
 
   doc.setTextColor(15, 23, 42);
   doc.setFont('helvetica', 'bold');
@@ -269,6 +269,9 @@ export function createRealPdfBook(
   doc.text(`• Autor: ${book.author}`, margin + 6, nextY + 21);
   doc.text(`• Género: ${book.genre} | Páginas estimadas: ${book.pageCount}`, margin + 6, nextY + 27);
   doc.text(`• Publicación: LibroLibre Chile · Distribución independiente`, margin + 6, nextY + 33);
+  if (book.teraboxUrl) {
+    doc.text(`• Respaldo en la Nube (TeraBox): ${book.teraboxUrl}`, margin + 6, nextY + 39);
+  }
 
   // ----------------------------------------------------
   // CHAPTERS PAGES
@@ -431,6 +434,9 @@ function buildBookDocumentText(book: Book, readerName: string, downloadToken?: s
   doc += `• Fecha de adquisición: ${dateStr}\n`;
   if (downloadToken) {
     doc += `• Código de verificación: ${downloadToken}\n`;
+  }
+  if (book.teraboxUrl) {
+    doc += `• Descarga directa en la Nube (TeraBox 1TB): ${book.teraboxUrl}\n`;
   }
   doc += `\nSINOPSIS:\n${book.synopsis}\n\n`;
 

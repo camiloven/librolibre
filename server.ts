@@ -507,9 +507,18 @@ async function startServer() {
       }
     }
 
-    // Serve production static assets from dist
+    // Serve production static assets from dist with no-cache on HTML/SW
     if (fs.existsSync(distPath)) {
-      app.use(express.static(distPath, { maxAge: '1d', index: false }));
+      app.use(express.static(distPath, {
+        setHeaders: (res, filePath) => {
+          if (filePath.endsWith('.html') || filePath.endsWith('sw.js') || filePath.endsWith('registerSW.js')) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          } else {
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+          }
+        },
+        index: false
+      }));
     }
 
     // Serve public directory assets as fallback
@@ -526,6 +535,7 @@ async function startServer() {
       }
 
       if (fs.existsSync(indexPath)) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         return res.sendFile(indexPath);
       }
 

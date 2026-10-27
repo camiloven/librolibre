@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AuthorProfile, ChileanPaymentConfig } from '../types/book';
-import { X, Building2, Smartphone, CreditCard, ShieldCheck, Check, KeyRound } from 'lucide-react';
+import { X, Building2, Smartphone, CreditCard, ShieldCheck, Check, KeyRound, Cloud, ExternalLink } from 'lucide-react';
 
 interface PaymentSettingsModalProps {
   authorProfile: AuthorProfile;
@@ -293,7 +293,46 @@ export const PaymentSettingsModal: React.FC<PaymentSettingsModalProps> = ({
             )}
           </div>
 
-          {/* Save & Feedback */}
+          {/* Master TeraBox Cloud Storage Vault */}
+          <div className="p-4 rounded-xl bg-sky-950/20 border border-sky-500/30 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sky-400 font-semibold text-xs uppercase tracking-wider">
+                <Cloud className="w-4 h-4 text-sky-400" />
+                <span>Bóveda Maestra TeraBox (1024 GB en la Nube)</span>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 bg-sky-500/20 text-sky-300 rounded font-mono font-bold">
+                1 TB GRATIS
+              </span>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Enlaza tu carpeta principal o unidad de <strong>TeraBox</strong> donde subes todos tus libros completos y carpetas temáticas. Los lectores que completen la adquisición podrán acceder o descargar directamente desde la nube.
+            </p>
+            <div>
+              <label className="block text-[11px] text-slate-400 mb-1">
+                URL de tu Carpeta o Bóveda en TeraBox
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={profile.teraboxLibraryUrl || ''}
+                  onChange={(e) => setProfile((prev) => ({ ...prev, teraboxLibraryUrl: e.target.value }))}
+                  placeholder="https://terabox.com/s/1abcXYZ... o enlace compartido"
+                  className="w-full px-3 py-2 bg-slate-950 text-xs text-sky-300 placeholder-slate-600 rounded-lg border border-slate-800 focus:outline-none focus:border-sky-500"
+                />
+                {profile.teraboxLibraryUrl && (
+                  <a
+                    href={profile.teraboxLibraryUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-2 bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 rounded-lg text-xs font-semibold flex items-center gap-1 shrink-0"
+                  >
+                    <span>Probar</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
           <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
             {savedSuccess ? (
               <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1.5">

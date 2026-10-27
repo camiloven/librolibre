@@ -9,9 +9,9 @@ if (typeof window !== 'undefined') {
  * Automatically extracts the first page of an uploaded PDF file and returns it as a JPEG data URL
  * so that the user's book uses its own actual cover page without needing to manually upload a cover image!
  */
-export async function extractCoverFromPdf(file: File): Promise<string> {
+export async function extractCoverFromPdf(fileOrBuffer: File | ArrayBuffer, fallbackTitle?: string): Promise<string> {
   try {
-    const arrayBuffer = await file.arrayBuffer();
+    const arrayBuffer = fileOrBuffer instanceof ArrayBuffer ? fileOrBuffer : await fileOrBuffer.arrayBuffer();
 
     // Load PDF document
     const loadingTask = pdfjsLib.getDocument({
@@ -56,16 +56,16 @@ export async function extractCoverFromPdf(file: File): Promise<string> {
     return coverDataUrl;
   } catch (error) {
     console.warn('PDF.js cover extraction failed, trying direct binary scan fallback:', error);
-    return extractCoverFromPdfBinary(file);
+    return extractCoverFromPdfBinary(fileOrBuffer, fallbackTitle);
   }
 }
 
 /**
  * Fallback: scans the PDF binary for the first embedded JPEG or PNG stream
  */
-async function extractCoverFromPdfBinary(file: File): Promise<string> {
+async function extractCoverFromPdfBinary(fileOrBuffer: File | ArrayBuffer, fallbackTitle?: string): Promise<string> {
   try {
-    const arrayBuffer = await file.arrayBuffer();
+    const arrayBuffer = fileOrBuffer instanceof ArrayBuffer ? fileOrBuffer : await fileOrBuffer.arrayBuffer();
     const uint8 = new Uint8Array(arrayBuffer);
 
     // Look for JPEG magic bytes (FF D8 FF)
@@ -88,7 +88,8 @@ async function extractCoverFromPdfBinary(file: File): Promise<string> {
   }
 
   // Graceful fallback: generate cover canvas with title
-  return generateTextBookCover(file.name.replace(/\.[^/.]+$/, ''));
+  const nameToUse = fallbackTitle || (fileOrBuffer instanceof File ? fileOrBuffer.name.replace(/\.[^/.]+$/, '') : 'Libro Digital');
+  return generateTextBookCover(nameToUse);
 }
 
 function blobToDataUrl(blob: Blob): Promise<string> {

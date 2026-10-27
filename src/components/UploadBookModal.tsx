@@ -2,7 +2,8 @@ import React, { useState, useRef } from 'react';
 import { Book, PricingType, Chapter, BookFolder } from '../types/book';
 import { 
   X, Upload, FileText, Image as ImageIcon, Sparkles, Plus, Trash2, 
-  CheckCircle2, Loader2, RefreshCw, Eye, Folder, DollarSign
+  CheckCircle2, Loader2, RefreshCw, Eye, Folder, DollarSign,
+  Cloud, ExternalLink, Link2, Info
 } from 'lucide-react';
 import { extractCoverFromPdf, generateTextBookCover } from '../utils/pdfCoverExtractor';
 import { compressImage } from '../utils/imageCompressor';
@@ -47,6 +48,8 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [fileBase64Data, setFileBase64Data] = useState<string>('');
   const [downloadUrl, setDownloadUrl] = useState<string>('');
+  const [teraboxUrl, setTeraboxUrl] = useState<string>('');
+  const [uploadMode, setUploadMode] = useState<'terabox' | 'local'>('terabox');
   const [isUploadingFile, setIsUploadingFile] = useState<boolean>(false);
   const [uploadFileError, setUploadFileError] = useState<string | null>(null);
   const [fileType, setFileType] = useState<'PDF' | 'EPUB' | 'MOBI' | 'TXT' | 'DOCX'>('PDF');
@@ -67,8 +70,8 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setUploadedFile(file);
-      const ext = file.name.split('.').pop()?.toUpperCase();
-      if (ext === 'PDF' || ext === 'EPUB' || ext === 'MOBI' || ext === 'TXT' || ext === 'DOCX') {
+      const ext = (file.name.split('.').pop()?.toUpperCase() || 'PDF');
+      if (['PDF', 'EPUB', 'MOBI', 'TXT', 'DOCX'].includes(ext)) {
         setFileType(ext as any);
       }
       const mbSize = (file.size / (1024 * 1024)).toFixed(1);
@@ -80,14 +83,51 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
         setTitle(cleanName.charAt(0).toUpperCase() + cleanName.slice(1));
       }
 
-      // 1. Upload original book file to permanent storage immediately
       setIsUploadingFile(true);
+      setIsExtractingCover(true);
       setUploadFileError(null);
-      const reader = new FileReader();
-      reader.onload = async () => {
+
+      try {
+        // Read file sequentially as ArrayBuffer to prevent Android ContentResolver descriptor locking
+        const arrayBuffer = await file.arrayBuffer();
+
+        // 1. Extract cover from the in-memory arrayBuffer safely
+        if (ext === 'PDF') {
+          try {
+            const extractedCover = await extractCoverFromPdf(arrayBuffer, file.name);
+            if (extractedCover) {
+              setCoverPreview(extractedCover);
+              setCoverUrl(extractedCover);
+              setCoverSource('auto-pdf');
+            }
+          } catch (covErr) {
+            console.warn('Cover extraction notice:', covErr);
+            const gen = generateTextBookCover(file.name.replace(/\.[^/.]+$/, ''));
+            setCoverPreview(gen);
+            setCoverUrl(gen);
+            setCoverSource('generated');
+          }
+        } else {
+          const gen = generateTextBookCover(file.name.replace(/\.[^/.]+$/, ''));
+          setCoverPreview(gen);
+          setCoverUrl(gen);
+          setCoverSource('generated');
+        }
+        setIsExtractingCover(false);
+
+        // 2. Convert ArrayBuffer to base64 data URL in non-blocking safe chunks
+        const bytes = new Uint8Array(arrayBuffer);
+        let binary = '';
+        const chunkSize = 0x8000;
+        for (let i = 0; i < bytes.byteLength; i += chunkSize) {
+          binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunkSize, bytes.byteLength)) as any);
+        }
+        const mimeType = ext === 'PDF' ? 'application/pdf' : 'application/octet-stream';
+        const base64Data = `data:${mimeType};base64,${btoa(binary)}`;
+        setFileBase64Data(base64Data);
+
+        // 3. Upload to server
         try {
-          const base64Data = reader.result as string;
-          setFileBase64Data(base64Data);
           const res = await fetch('/api/upload-book-file', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -102,41 +142,24 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
             setDownloadUrl(data.downloadUrl);
             if (data.fileSize) setFileSizeStr(data.fileSize);
           } else {
-            setUploadFileError(data.error || 'Error al procesar archivo');
+            setUploadFileError(data.error || 'Aviso: Se guardará directamente en la base de datos.');
           }
-        } catch (err: any) {
-          console.warn('Error uploading original book to server:', err);
-          setUploadFileError('No se pudo subir al servidor; se guardará de forma local y en la nube.');
-        } finally {
-          setIsUploadingFile(false);
+        } catch (uploadErr) {
+          console.warn('Server upload notice:', uploadErr);
         }
-      };
-      reader.onerror = () => {
-        setIsUploadingFile(false);
-        setUploadFileError('Error al leer el archivo en el navegador.');
-      };
-      reader.readAsDataURL(file);
-
-      // 2. Automatically extract cover from uploaded book (PDF page 1)
-      setIsExtractingCover(true);
-      try {
-        if (ext === 'PDF') {
-          const extractedCover = await extractCoverFromPdf(file);
-          if (extractedCover) {
-            setCoverPreview(extractedCover);
-            setCoverUrl(extractedCover);
-            setCoverSource('auto-pdf');
-          }
-        } else {
-          // For non-PDF documents without raster pages, generate a typographic cover
+      } catch (err: any) {
+        console.warn('Android file reading notice:', err);
+        setUploadFileError(
+          'Android restringió la lectura directa del archivo físico (posiblemente esté en la nube de TeraBox sin descargarse a la memoria interna). Puedes cambiar a la pestaña "Enlace TeraBox" para vincularlo directamente con su URL sin necesidad de subir megabytes.'
+        );
+        if (!coverUrl) {
           const gen = generateTextBookCover(file.name.replace(/\.[^/.]+$/, ''));
           setCoverPreview(gen);
           setCoverUrl(gen);
           setCoverSource('generated');
         }
-      } catch (err) {
-        console.warn('Cover extraction error:', err);
       } finally {
+        setIsUploadingFile(false);
         setIsExtractingCover(false);
       }
     }
@@ -220,6 +243,11 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
       return;
     }
 
+    if (!uploadedFile && !teraboxUrl.trim()) {
+      alert('Por favor ingresa un enlace de TeraBox o sube un archivo para que tus lectores puedan descargarlo.');
+      return;
+    }
+
     const bookId = `book-${Date.now()}`;
 
     // 1. Cache the original file in client IndexedDB permanently
@@ -243,6 +271,7 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
     const parsedPriceCLP = isLiberated ? 0 : (priceCLP ? Number(priceCLP) : 0);
     const parsedPriceUSD = isLiberated ? 0 : (priceUSD ? Number(priceUSD) : undefined);
     const parsedPwyw = allowPwywMin ? Number(allowPwywMin) : undefined;
+    const finalCover = coverUrl || coverPreview || generateTextBookCover(title.trim());
 
     const newBook: Book = {
       id: bookId,
@@ -253,7 +282,7 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
       genre,
       folderId: selectedFolderId || undefined,
       folderName: chosenFolder ? chosenFolder.name : undefined,
-      coverUrl: coverUrl || coverPreview || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80',
+      coverUrl: finalCover,
       pricingType: isLiberated ? 'free' : pricingType,
       price: parsedPriceCLP,
       priceUSD: parsedPriceUSD,
@@ -268,6 +297,7 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
       fileSize: fileSizeStr,
       fileName: uploadedFile?.name,
       downloadUrl: downloadUrl || undefined,
+      teraboxUrl: teraboxUrl.trim() || undefined,
       uploadedFileBlob: uploadedFile || undefined,
       sampleChapters: chapters.filter(c => c.title.trim() && c.content.trim() && !c.content.includes('Escribe aquí el texto')),
       rating: 5.0,
@@ -290,9 +320,14 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-slate-800 bg-slate-950/60">
           <div>
-            <span className="text-[11px] font-mono uppercase tracking-wider text-amber-400 font-semibold">
-              Panel del Autor
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-amber-400 font-semibold">
+                Panel del Autor
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 font-mono font-bold border border-sky-500/30">
+                ☁️ TeraBox 1TB Integrado
+              </span>
+            </div>
             <h3 className="font-serif font-bold text-xl text-white">
               Publicar / Subir Nuevo Libro
             </h3>
@@ -306,73 +341,192 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[82vh] overflow-y-auto">
-          {/* Section 1: File Upload */}
-          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
-            <div className="flex items-center justify-between">
+          {/* Section 1: File / Cloud Hosting */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-2">
                 <FileText className="w-4 h-4 text-amber-400" />
-                <span>Archivo del Libro (PDF, EPUB, MOBI, DOCX, TXT)</span>
+                <span>Método de Entrega del Libro</span>
               </label>
-              {uploadedFile && (
-                <span className="text-xs text-emerald-400 font-mono">
-                  {uploadedFile.name} ({fileSizeStr})
-                </span>
-              )}
+
+              {/* Mode switch tabs */}
+              <div className="flex items-center gap-1 p-1 bg-slate-900 rounded-xl border border-slate-800 self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setUploadMode('terabox')}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                    uploadMode === 'terabox'
+                      ? 'bg-sky-500 text-slate-950 shadow-md font-bold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Cloud className="w-3.5 h-3.5" />
+                  <span>☁️ Enlace TeraBox (Recomendado)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUploadMode('local')}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                    uploadMode === 'local'
+                      ? 'bg-amber-400 text-slate-950 shadow-md font-bold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>📁 Subir Archivo Local</span>
+                </button>
+              </div>
             </div>
 
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              accept=".pdf,.epub,.mobi,.txt,.docx"
-              className="hidden"
-            />
+            {uploadMode === 'terabox' ? (
+              /* TAB 1: TERABOX CLOUD LINK (RECOMMENDED) */
+              <div className="p-4 rounded-xl bg-sky-950/25 border border-sky-500/35 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Cloud className="w-4 h-4 text-sky-400" />
+                      <span className="text-xs font-bold text-sky-300">
+                        Alojamiento en TeraBox Cloud (1024 GB Gratuitos)
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 bg-sky-500/20 text-sky-300 rounded font-mono font-bold">
+                        1 TB GRATIS
+                      </span>
+                    </div>
+                    <p className="text-xs text-sky-200/80 mt-1.5 leading-relaxed">
+                      Sube tu libro a tu cuenta o carpeta especial de <strong>TeraBox</strong> y pega el enlace compartido aquí. ¡Sin errores de subida en el celular, sin límite de tamaño de archivo y con descargas instantáneas para tus lectores!
+                    </p>
+                  </div>
+                </div>
 
-            <div
-              onClick={() => !isUploadingFile && fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-colors group ${
-                downloadUrl
-                  ? 'border-emerald-500/50 bg-emerald-950/20'
-                  : 'border-slate-800 hover:border-amber-500/50 bg-slate-900/50'
-              }`}
-            >
-              {isUploadingFile ? (
-                <div className="flex flex-col items-center justify-center py-2">
-                  <Loader2 className="w-8 h-8 text-amber-400 animate-spin mb-2" />
-                  <p className="text-sm font-semibold text-amber-200">
-                    Subiendo archivo a la nube para descarga permanente...
-                  </p>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Esto asegura que todos los lectores reciban el archivo original completo.
-                  </p>
+                <div className="p-3 rounded-xl bg-sky-950/40 border border-sky-500/20 text-xs text-slate-300 space-y-1.5">
+                  <div className="font-semibold text-sky-300 text-[11px] flex items-center gap-1.5">
+                    <Info className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                    <span>¿Cómo obtener el enlace de TeraBox en 10 segundos?</span>
+                  </div>
+                  <ol className="list-decimal list-inside space-y-1 text-[11px] text-slate-300 pl-0.5 leading-relaxed">
+                    <li>Abre tu app o web de <strong>TeraBox</strong>.</li>
+                    <li>Toca los tres puntos <span className="font-mono text-amber-300">···</span> junto al libro (ej. <em>Inteligencia Natural.pdf</em>) o en tu carpeta especial.</li>
+                    <li>Selecciona <strong>«Compartir»</strong> y luego <strong>«Copiar enlace»</strong>.</li>
+                    <li>Pega el enlace en el recuadro azul de abajo y presiona <strong>Publicar</strong>.</li>
+                  </ol>
                 </div>
-              ) : downloadUrl ? (
-                <div className="flex flex-col items-center justify-center py-1">
-                  <CheckCircle2 className="w-8 h-8 text-emerald-400 mb-2" />
-                  <p className="text-sm font-semibold text-emerald-200">
-                    ¡Archivo listo para descarga permanente!
-                  </p>
-                  <p className="text-xs text-slate-400 mt-1">
-                    {uploadedFile?.name} ({fileSizeStr}) · Haz clic para cambiarlo
-                  </p>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-300 mb-1">
+                    Enlace compartido de TeraBox (Archivo o Carpeta Especial) *
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      value={teraboxUrl}
+                      onChange={(e) => setTeraboxUrl(e.target.value)}
+                      placeholder="https://terabox.com/s/1... o https://terabox.app/s/..."
+                      className="w-full px-3.5 py-2.5 bg-slate-950 text-xs text-sky-300 placeholder-slate-600 rounded-xl border border-sky-500/40 focus:outline-none focus:border-sky-400 font-mono"
+                      autoFocus
+                    />
+                    {teraboxUrl && (
+                      <a
+                        href={teraboxUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-2 bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 rounded-xl text-xs font-semibold flex items-center gap-1 shrink-0"
+                        title="Verificar enlace en TeraBox"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2">
+                    <span>Acepta enlaces directos de libros o carpetas temáticas de TeraBox.</span>
+                    <button
+                      type="button"
+                      onClick={() => setUploadMode('local')}
+                      className="text-amber-400 hover:underline cursor-pointer"
+                    >
+                      ¿Prefieres subir un archivo desde tu celular?
+                    </button>
+                  </div>
                 </div>
-              ) : (
-                <>
-                  <Upload className="w-8 h-8 text-slate-500 group-hover:text-amber-400 mx-auto mb-2 transition-colors" />
-                  <p className="text-sm font-medium text-slate-200">
-                    {uploadedFile ? 'Haz clic para cambiar el archivo' : 'Arrastra tu archivo o haz clic para seleccionarlo'}
-                  </p>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Soporta PDFs con maquetación completa, ePubs o documentos de texto digital.
-                  </p>
-                </>
-              )}
-              {uploadFileError && (
-                <p className="text-xs text-rose-400 mt-2 font-medium">
-                  {uploadFileError}
-                </p>
-              )}
-            </div>
+              </div>
+            ) : (
+              /* TAB 2: LOCAL FILE UPLOAD */
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400">Selecciona el PDF o EPUB almacenado en tu dispositivo:</span>
+                  {uploadedFile && (
+                    <span className="text-xs text-emerald-400 font-mono">
+                      {uploadedFile.name} ({fileSizeStr})
+                    </span>
+                  )}
+                </div>
+
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept=".pdf,.epub,.mobi,.txt,.docx"
+                  className="hidden"
+                />
+
+                <div
+                  onClick={() => !isUploadingFile && fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-colors group ${
+                    downloadUrl
+                      ? 'border-emerald-500/50 bg-emerald-950/20'
+                      : 'border-slate-800 hover:border-amber-500/50 bg-slate-900/50'
+                  }`}
+                >
+                  {isUploadingFile ? (
+                    <div className="flex flex-col items-center justify-center py-2">
+                      <Loader2 className="w-8 h-8 text-amber-400 animate-spin mb-2" />
+                      <p className="text-sm font-semibold text-amber-200">
+                        Procesando y empaquetando archivo...
+                      </p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Leyendo páginas y preparando descarga permanente.
+                      </p>
+                    </div>
+                  ) : downloadUrl ? (
+                    <div className="flex flex-col items-center justify-center py-1">
+                      <CheckCircle2 className="w-8 h-8 text-emerald-400 mb-2" />
+                      <p className="text-sm font-semibold text-emerald-200">
+                        ¡Archivo cargado exitosamente!
+                      </p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        {uploadedFile?.name} ({fileSizeStr}) · Haz clic para cambiarlo
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="w-8 h-8 text-slate-500 group-hover:text-amber-400 mx-auto mb-2 transition-colors" />
+                      <p className="text-sm font-medium text-slate-200">
+                        {uploadedFile ? 'Haz clic para cambiar el archivo' : 'Toca aquí para seleccionar archivo PDF o EPUB'}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Soporta PDFs con maquetación completa, ePubs o documentos de texto digital.
+                      </p>
+                    </>
+                  )}
+                  {uploadFileError && (
+                    <div className="mt-3 p-3 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs text-left leading-relaxed">
+                      <p className="font-semibold mb-1">⚠️ Aviso de lectura en el teléfono:</p>
+                      <p>{uploadFileError}</p>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setUploadMode('terabox');
+                        }}
+                        className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-500 hover:bg-sky-400 text-slate-950 rounded-lg font-bold text-xs cursor-pointer shadow transition-colors"
+                      >
+                        <Cloud className="w-3.5 h-3.5" />
+                        <span>Usar Enlace TeraBox (Sin subir archivo pesado)</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Section 2: General Info */}
