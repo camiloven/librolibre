@@ -60,6 +60,8 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
   const [coverUrl, setCoverUrl] = useState('');
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [isExtractingCover, setIsExtractingCover] = useState(false);
+  const [isExtractingFromMega, setIsExtractingFromMega] = useState(false);
+  const [megaExtractNotice, setMegaExtractNotice] = useState<string | null>(null);
   const [coverSource, setCoverSource] = useState<'auto-pdf' | 'manual' | 'generated' | 'none'>('none');
   const coverInputRef = useRef<HTMLInputElement>(null);
 
@@ -207,6 +209,79 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
       } catch (err) {
         console.warn('Cover compress error:', err);
       }
+    }
+  };
+
+  const handleExtractFromMega = async (inputUrl?: string) => {
+    const urlToUse = (inputUrl || megaUrl).trim();
+    if (!urlToUse || (!urlToUse.includes('mega.nz') && !urlToUse.includes('mega.io'))) {
+      alert('Por favor pega un enlace válido de MEGA con su clave (ej: https://mega.nz/file/...#...)');
+      return;
+    }
+
+    setIsExtractingFromMega(true);
+    setMegaExtractNotice(null);
+    try {
+      const res = await fetch('/api/extract-mega-cover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: urlToUse }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'No se pudo conectar al archivo de MEGA');
+      }
+
+      // Auto-populate Title & File info
+      if (data.title && (!title || title.trim() === 'Libro')) {
+        setTitle(data.title);
+      }
+      if (data.fileSize) {
+        setFileSizeStr(data.fileSize);
+      }
+      if (data.fileType) {
+        setFileType(data.fileType);
+      }
+
+      // Case 1: Direct Image Cover extracted
+      if (data.coverUrl) {
+        setCoverPreview(data.coverUrl);
+        setCoverUrl(data.coverUrl);
+        setCoverSource('manual');
+        setMegaExtractNotice(`✓ Portada e información extraídas de "${data.fileName}"`);
+        return;
+      }
+
+      // Case 2: PDF buffer returned -> Render Page 1 to Canvas
+      if (data.pdfBase64) {
+        // Convert base64 to ArrayBuffer
+        const binaryStr = atob(data.pdfBase64);
+        const len = binaryStr.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+        const extractedCover = await extractCoverFromPdf(bytes.buffer, data.title);
+        if (extractedCover) {
+          setCoverPreview(extractedCover);
+          setCoverUrl(extractedCover);
+          setCoverSource('auto-pdf');
+          setMegaExtractNotice(`✓ ¡Portada extraída de la 1ª página del PDF en MEGA! ("${data.fileName}")`);
+          return;
+        }
+      }
+
+      // Case 3: Folder or non-PDF without buffer -> Auto-generate editorial cover
+      const gen = generateTextBookCover(data.title || title || 'Libro Digital', author || defaultAuthorName, 'navy');
+      setCoverPreview(gen);
+      setCoverUrl(gen);
+      setCoverSource('generated');
+      setMegaExtractNotice(`✓ Título "${data.title}" detectado. Portada generada automáticamente.`);
+    } catch (err: any) {
+      console.warn('Mega extract notice:', err);
+      setMegaExtractNotice(`Aviso: ${err.message || 'No se pudo leer la portada automática'}. Puedes subir la imagen con el botón amarillo abajo.`);
+    } finally {
+      setIsExtractingFromMega(false);
     }
   };
 
@@ -428,7 +503,7 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   </label>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <input
                       type="url"
                       value={megaUrl}
@@ -437,26 +512,58 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
                       className="w-full px-3.5 py-2.5 bg-slate-950 text-xs text-rose-200 placeholder-slate-600 rounded-xl border border-rose-500/40 focus:outline-none focus:border-rose-400 font-mono"
                       autoFocus
                     />
-                    {megaUrl && (
-                      <a
-                        href={megaUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-3 py-2 bg-rose-600/30 hover:bg-rose-600/50 text-rose-200 rounded-xl text-xs font-semibold flex items-center gap-1 shrink-0"
-                        title="Verificar enlace en MEGA"
+                    <div className="flex gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleExtractFromMega()}
+                        disabled={isExtractingFromMega || !megaUrl.trim()}
+                        className="px-3.5 py-2.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md transition-colors"
+                        title="Descifra el archivo de MEGA y extrae automáticamente la primera página del PDF como portada"
                       >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    )}
+                        {isExtractingFromMega ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Extrayendo...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                            <span>⚡ Extraer Portada y Datos</span>
+                          </>
+                        )}
+                      </button>
+                      {megaUrl && (
+                        <a
+                          href={megaUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-2 bg-rose-600/30 hover:bg-rose-600/50 text-rose-200 rounded-xl text-xs font-semibold flex items-center gap-1 shrink-0"
+                          title="Verificar enlace en MEGA"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      )}
+                    </div>
                   </div>
+
+                  {megaExtractNotice && (
+                    <div className={`mt-2 p-2.5 rounded-lg text-xs leading-relaxed ${
+                      megaExtractNotice.startsWith('✓') 
+                        ? 'bg-emerald-950/50 border border-emerald-800 text-emerald-300' 
+                        : 'bg-amber-950/50 border border-amber-800 text-amber-300'
+                    }`}>
+                      {megaExtractNotice}
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2">
-                    <span>Acepta enlaces oficiales de mega.nz / mega.io (archivos o carpetas).</span>
+                    <span>💡 Puedes pulsar el botón <strong>«⚡ Extraer Portada y Datos»</strong> para obtener la portada del PDF en MEGA automáticamente.</span>
                     <button
                       type="button"
                       onClick={() => setUploadMode('local')}
-                      className="text-amber-400 hover:underline cursor-pointer"
+                      className="text-amber-400 hover:underline cursor-pointer ml-2 shrink-0"
                     >
-                      ¿Prefieres subir un archivo desde tu celular?
+                      Subir archivo local
                     </button>
                   </div>
                 </div>

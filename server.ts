@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { File as MegaFile } from 'megajs';
 
 dotenv.config();
 
@@ -487,6 +488,109 @@ app.post('/api/transactions', (req: Request, res: Response) => {
     res.json({ success: true, transactions: txs });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ==========================================
+// MEGA.IO COVER & METADATA AUTO-EXTRACTOR API
+// ==========================================
+
+app.post('/api/extract-mega-cover', async (req: Request, res: Response) => {
+  try {
+    const { url } = req.body;
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({ success: false, error: 'URL requerida' });
+    }
+
+    const cleanUrl = url.trim();
+    if (!cleanUrl.includes('mega.nz') && !cleanUrl.includes('mega.io')) {
+      return res.status(400).json({ success: false, error: 'Enlace no válido de MEGA' });
+    }
+
+    let targetFile: any;
+    try {
+      const megaItem = MegaFile.fromURL(cleanUrl);
+      await megaItem.loadAttributes();
+
+      if (megaItem.directory) {
+        // If it's a folder, look for an image file first, or the first PDF
+        const children = megaItem.children || [];
+        const imageFile = children.find((c: any) => 
+          !c.directory && /\.(jpe?g|png|webp)$/i.test(c.name || '')
+        );
+        const pdfFile = children.find((c: any) => 
+          !c.directory && /\.pdf$/i.test(c.name || '')
+        );
+        targetFile = imageFile || pdfFile || children.find((c: any) => !c.directory);
+        
+        if (!targetFile) {
+          const folderName = megaItem.name || 'Carpeta MEGA';
+          return res.json({
+            success: true,
+            title: folderName,
+            fileName: folderName,
+            isFolder: true,
+            fileType: 'PDF'
+          });
+        }
+      } else {
+        targetFile = megaItem;
+      }
+    } catch (megaErr: any) {
+      console.warn('MEGA loadAttributes error:', megaErr?.message);
+      return res.status(400).json({ 
+        success: false, 
+        error: 'No se pudo leer el archivo en MEGA. Asegúrate de incluir la clave de descifrado del enlace (ej: #...)' 
+      });
+    }
+
+    const fileName = targetFile.name || 'Libro Digital';
+    const fileSize = targetFile.size ? `${(targetFile.size / (1024 * 1024)).toFixed(1)} MB` : '3.0 MB';
+    const ext = (fileName.split('.').pop() || '').toUpperCase();
+    const cleanTitle = fileName.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
+    const formattedTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
+
+    // If target file is an image (JPG, PNG, WEBP), download it directly (up to 5MB)
+    if (['JPG', 'JPEG', 'PNG', 'WEBP'].includes(ext)) {
+      const buffer = await targetFile.downloadBuffer({ maxBytes: 5 * 1024 * 1024 });
+      const mime = ext === 'PNG' ? 'image/png' : ext === 'WEBP' ? 'image/webp' : 'image/jpeg';
+      const coverUrl = `data:${mime};base64,${buffer.toString('base64')}`;
+      return res.json({
+        success: true,
+        title: formattedTitle,
+        fileName,
+        fileSize,
+        fileType: 'PDF',
+        coverUrl
+      });
+    }
+
+    // If target file is a PDF, download up to 6MB so the client can extract page 1 with PDF.js
+    if (ext === 'PDF') {
+      const maxBytes = Math.min(targetFile.size || 6 * 1024 * 1024, 6 * 1024 * 1024);
+      const buffer = await targetFile.downloadBuffer({ maxBytes });
+      const pdfBase64 = buffer.toString('base64');
+      return res.json({
+        success: true,
+        title: formattedTitle,
+        fileName,
+        fileSize,
+        fileType: 'PDF',
+        pdfBase64
+      });
+    }
+
+    // Other file types
+    return res.json({
+      success: true,
+      title: formattedTitle,
+      fileName,
+      fileSize,
+      fileType: ['EPUB', 'MOBI', 'TXT', 'DOCX'].includes(ext) ? ext : 'PDF'
+    });
+  } catch (err: any) {
+    console.error('Unhandled error in /api/extract-mega-cover:', err);
+    res.status(500).json({ success: false, error: err.message || 'Error procesando archivo de MEGA' });
   }
 });
 
