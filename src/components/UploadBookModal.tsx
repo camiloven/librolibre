@@ -48,8 +48,8 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [fileBase64Data, setFileBase64Data] = useState<string>('');
   const [downloadUrl, setDownloadUrl] = useState<string>('');
-  const [teraboxUrl, setTeraboxUrl] = useState<string>('');
-  const [uploadMode, setUploadMode] = useState<'terabox' | 'local'>('terabox');
+  const [megaUrl, setMegaUrl] = useState<string>('');
+  const [uploadMode, setUploadMode] = useState<'mega' | 'local'>('mega');
   const [isUploadingFile, setIsUploadingFile] = useState<boolean>(false);
   const [uploadFileError, setUploadFileError] = useState<string | null>(null);
   const [fileType, setFileType] = useState<'PDF' | 'EPUB' | 'MOBI' | 'TXT' | 'DOCX'>('PDF');
@@ -150,7 +150,7 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
       } catch (err: any) {
         console.warn('Android file reading notice:', err);
         setUploadFileError(
-          'Android restringió la lectura directa del archivo físico (posiblemente esté en la nube de TeraBox sin descargarse a la memoria interna). Puedes cambiar a la pestaña "Enlace TeraBox" para vincularlo directamente con su URL sin necesidad de subir megabytes.'
+          'Android restringió la lectura directa del archivo físico (posiblemente esté en la nube sin descargarse a la memoria interna). Puedes cambiar a la pestaña "Enlace MEGA" para vincularlo directamente con su enlace de mega.io sin necesidad de subir megabytes.'
         );
         if (!coverUrl) {
           const gen = generateTextBookCover(file.name.replace(/\.[^/.]+$/, ''));
@@ -243,8 +243,8 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
       return;
     }
 
-    if (!uploadedFile && !teraboxUrl.trim()) {
-      alert('Por favor ingresa un enlace de TeraBox o sube un archivo para que tus lectores puedan descargarlo.');
+    if (!uploadedFile && !megaUrl.trim()) {
+      alert('Por favor ingresa un enlace de MEGA (mega.io) o sube un archivo para que tus lectores puedan descargarlo.');
       return;
     }
 
@@ -297,7 +297,8 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
       fileSize: fileSizeStr,
       fileName: uploadedFile?.name,
       downloadUrl: downloadUrl || undefined,
-      teraboxUrl: teraboxUrl.trim() || undefined,
+      megaUrl: megaUrl.trim() || undefined,
+      teraboxUrl: megaUrl.trim() || undefined,
       uploadedFileBlob: uploadedFile || undefined,
       sampleChapters: chapters.filter(c => c.title.trim() && c.content.trim() && !c.content.includes('Escribe aquí el texto')),
       rating: 5.0,
@@ -324,8 +325,9 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
               <span className="text-[11px] font-mono uppercase tracking-wider text-amber-400 font-semibold">
                 Panel del Autor
               </span>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 font-mono font-bold border border-sky-500/30">
-                ☁️ TeraBox 1TB Integrado
+              <span className="text-[10px] px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono font-bold border border-rose-500/30 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                🔴 MEGA.io Nube Integrada
               </span>
             </div>
             <h3 className="font-serif font-bold text-xl text-white">
@@ -353,15 +355,15 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
               <div className="flex items-center gap-1 p-1 bg-slate-900 rounded-xl border border-slate-800 self-start sm:self-auto">
                 <button
                   type="button"
-                  onClick={() => setUploadMode('terabox')}
+                  onClick={() => setUploadMode('mega')}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
-                    uploadMode === 'terabox'
-                      ? 'bg-sky-500 text-slate-950 shadow-md font-bold'
+                    uploadMode === 'mega'
+                      ? 'bg-rose-600 text-white shadow-md font-bold'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   <Cloud className="w-3.5 h-3.5" />
-                  <span>☁️ Enlace TeraBox (Recomendado)</span>
+                  <span>🔴 Enlace MEGA (Recomendado)</span>
                 </button>
                 <button
                   type="button"
@@ -378,66 +380,77 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
               </div>
             </div>
 
-            {uploadMode === 'terabox' ? (
-              /* TAB 1: TERABOX CLOUD LINK (RECOMMENDED) */
-              <div className="p-4 rounded-xl bg-sky-950/25 border border-sky-500/35 space-y-3">
+            {uploadMode === 'mega' ? (
+              /* TAB 1: MEGA.IO CLOUD LINK (RECOMMENDED) */
+              <div className="p-4 rounded-xl bg-rose-950/20 border border-rose-500/35 space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2">
-                      <Cloud className="w-4 h-4 text-sky-400" />
-                      <span className="text-xs font-bold text-sky-300">
-                        Alojamiento en TeraBox Cloud (1024 GB Gratuitos)
+                      <span className="w-5 h-5 rounded-full bg-rose-600 text-white font-bold text-[11px] flex items-center justify-center font-mono shadow-sm">
+                        M
                       </span>
-                      <span className="text-[10px] px-2 py-0.5 bg-sky-500/20 text-sky-300 rounded font-mono font-bold">
-                        1 TB GRATIS
+                      <span className="text-xs font-bold text-rose-300">
+                        Alojamiento en Nube MEGA (mega.io / mega.nz)
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 bg-rose-500/20 text-rose-300 rounded font-mono font-bold">
+                        SIN ANUNCIOS · MÁXIMA VELOCIDAD
                       </span>
                     </div>
-                    <p className="text-xs text-sky-200/80 mt-1.5 leading-relaxed">
-                      Sube tu libro a tu cuenta o carpeta especial de <strong>TeraBox</strong> y pega el enlace compartido aquí. ¡Sin errores de subida en el celular, sin límite de tamaño de archivo y con descargas instantáneas para tus lectores!
+                    <p className="text-xs text-rose-200/90 mt-1.5 leading-relaxed">
+                      Sube tu libro a tu cuenta o carpeta especial de <strong>MEGA (mega.io)</strong> y pega el enlace compartido aquí. Tus lectores descargarán el libro completo de inmediato con un solo clic, sin límites molestos ni publicidad.
                     </p>
                   </div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-sky-950/40 border border-sky-500/20 text-xs text-slate-300 space-y-1.5">
-                  <div className="font-semibold text-sky-300 text-[11px] flex items-center gap-1.5">
-                    <Info className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                    <span>¿Cómo obtener el enlace de TeraBox en 10 segundos?</span>
+                <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-500/25 text-xs text-slate-300 space-y-1.5">
+                  <div className="font-semibold text-rose-300 text-[11px] flex items-center gap-1.5">
+                    <Info className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                    <span>¿Cómo obtener el enlace de MEGA en 10 segundos?</span>
                   </div>
                   <ol className="list-decimal list-inside space-y-1 text-[11px] text-slate-300 pl-0.5 leading-relaxed">
-                    <li>Abre tu app o web de <strong>TeraBox</strong>.</li>
-                    <li>Toca los tres puntos <span className="font-mono text-amber-300">···</span> junto al libro (ej. <em>Inteligencia Natural.pdf</em>) o en tu carpeta especial.</li>
-                    <li>Selecciona <strong>«Compartir»</strong> y luego <strong>«Copiar enlace»</strong>.</li>
-                    <li>Pega el enlace en el recuadro azul de abajo y presiona <strong>Publicar</strong>.</li>
+                    <li>Abre tu app o entra a <strong className="text-rose-300">mega.io</strong> (o mega.nz) desde tu celular o PC.</li>
+                    <li>Sube tu libro en PDF o ePub a tu nube o crea una carpeta especial.</li>
+                    <li>Toca los tres puntos <span className="font-mono text-amber-300">···</span> junto al archivo o carpeta y elige <strong>«Obtener enlace»</strong>.</li>
+                    <li>Verifica que incluya la clave de descifrado, copia el enlace y pégalo abajo.</li>
                   </ol>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-300 mb-1">
-                    Enlace compartido de TeraBox (Archivo o Carpeta Especial) *
+                  <label className="block text-[11px] font-medium text-slate-300 mb-1 flex items-center justify-between">
+                    <span>Enlace compartido de MEGA (Archivo o Carpeta Especial) *</span>
+                    <a
+                      href="https://mega.io"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-rose-400 hover:text-rose-300 hover:underline flex items-center gap-1"
+                    >
+                      <span>Ir a mega.io</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
                   </label>
                   <div className="flex gap-2">
                     <input
                       type="url"
-                      value={teraboxUrl}
-                      onChange={(e) => setTeraboxUrl(e.target.value)}
-                      placeholder="https://terabox.com/s/1... o https://terabox.app/s/..."
-                      className="w-full px-3.5 py-2.5 bg-slate-950 text-xs text-sky-300 placeholder-slate-600 rounded-xl border border-sky-500/40 focus:outline-none focus:border-sky-400 font-mono"
+                      value={megaUrl}
+                      onChange={(e) => setMegaUrl(e.target.value)}
+                      placeholder="https://mega.nz/file/...#... o https://mega.nz/folder/...#..."
+                      className="w-full px-3.5 py-2.5 bg-slate-950 text-xs text-rose-200 placeholder-slate-600 rounded-xl border border-rose-500/40 focus:outline-none focus:border-rose-400 font-mono"
                       autoFocus
                     />
-                    {teraboxUrl && (
+                    {megaUrl && (
                       <a
-                        href={teraboxUrl}
+                        href={megaUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-3 py-2 bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 rounded-xl text-xs font-semibold flex items-center gap-1 shrink-0"
-                        title="Verificar enlace en TeraBox"
+                        className="px-3 py-2 bg-rose-600/30 hover:bg-rose-600/50 text-rose-200 rounded-xl text-xs font-semibold flex items-center gap-1 shrink-0"
+                        title="Verificar enlace en MEGA"
                       >
                         <ExternalLink className="w-4 h-4" />
                       </a>
                     )}
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2">
-                    <span>Acepta enlaces directos de libros o carpetas temáticas de TeraBox.</span>
+                    <span>Acepta enlaces oficiales de mega.nz / mega.io (archivos o carpetas).</span>
                     <button
                       type="button"
                       onClick={() => setUploadMode('local')}
@@ -515,12 +528,12 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setUploadMode('terabox');
+                          setUploadMode('mega');
                         }}
-                        className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-500 hover:bg-sky-400 text-slate-950 rounded-lg font-bold text-xs cursor-pointer shadow transition-colors"
+                        className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-bold text-xs cursor-pointer shadow transition-colors"
                       >
                         <Cloud className="w-3.5 h-3.5" />
-                        <span>Usar Enlace TeraBox (Sin subir archivo pesado)</span>
+                        <span>Usar Enlace MEGA (Sin subir archivo pesado)</span>
                       </button>
                     </div>
                   )}

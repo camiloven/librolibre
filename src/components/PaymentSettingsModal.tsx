@@ -293,38 +293,42 @@ export const PaymentSettingsModal: React.FC<PaymentSettingsModalProps> = ({
             )}
           </div>
 
-          {/* Master TeraBox Cloud Storage Vault */}
-          <div className="p-4 rounded-xl bg-sky-950/20 border border-sky-500/30 space-y-3">
+          {/* Master MEGA Cloud Storage Vault */}
+          <div className="p-4 rounded-xl bg-rose-950/20 border border-rose-500/30 space-y-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sky-400 font-semibold text-xs uppercase tracking-wider">
-                <Cloud className="w-4 h-4 text-sky-400" />
-                <span>Bóveda Maestra TeraBox (1024 GB en la Nube)</span>
+              <div className="flex items-center gap-2 text-rose-400 font-semibold text-xs uppercase tracking-wider">
+                <span className="w-4 h-4 rounded-full bg-rose-600 text-white font-bold text-[10px] flex items-center justify-center font-mono">M</span>
+                <span>Bóveda Maestra MEGA (mega.io / mega.nz)</span>
               </div>
-              <span className="text-[10px] px-2 py-0.5 bg-sky-500/20 text-sky-300 rounded font-mono font-bold">
-                1 TB GRATIS
+              <span className="text-[10px] px-2 py-0.5 bg-rose-500/20 text-rose-300 rounded font-mono font-bold">
+                🔴 NUBE SEGURA
               </span>
             </div>
             <p className="text-xs text-slate-300 leading-relaxed">
-              Enlaza tu carpeta principal o unidad de <strong>TeraBox</strong> donde subes todos tus libros completos y carpetas temáticas. Los lectores que completen la adquisición podrán acceder o descargar directamente desde la nube.
+              Enlaza tu carpeta principal o unidad de <strong>MEGA (mega.io)</strong> donde subes todos tus libros completos y colecciones. Los lectores que completen la adquisición podrán acceder o descargar directamente desde MEGA a máxima velocidad y sin publicidad.
             </p>
             <div>
               <label className="block text-[11px] text-slate-400 mb-1">
-                URL de tu Carpeta o Bóveda en TeraBox
+                URL de tu Carpeta o Bóveda en MEGA (mega.io)
               </label>
               <div className="flex gap-2">
                 <input
                   type="url"
-                  value={profile.teraboxLibraryUrl || ''}
-                  onChange={(e) => setProfile((prev) => ({ ...prev, teraboxLibraryUrl: e.target.value }))}
-                  placeholder="https://terabox.com/s/1abcXYZ... o enlace compartido"
-                  className="w-full px-3 py-2 bg-slate-950 text-xs text-sky-300 placeholder-slate-600 rounded-lg border border-slate-800 focus:outline-none focus:border-sky-500"
+                  value={profile.megaLibraryUrl || profile.teraboxLibraryUrl || ''}
+                  onChange={(e) => setProfile((prev) => ({ 
+                    ...prev, 
+                    megaLibraryUrl: e.target.value,
+                    teraboxLibraryUrl: e.target.value 
+                  }))}
+                  placeholder="https://mega.nz/folder/...#... o enlace compartido"
+                  className="w-full px-3 py-2 bg-slate-950 text-xs text-rose-300 placeholder-slate-600 rounded-lg border border-slate-800 focus:outline-none focus:border-rose-500 font-mono"
                 />
-                {profile.teraboxLibraryUrl && (
+                {(profile.megaLibraryUrl || profile.teraboxLibraryUrl) && (
                   <a
-                    href={profile.teraboxLibraryUrl}
+                    href={profile.megaLibraryUrl || profile.teraboxLibraryUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-3 py-2 bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 rounded-lg text-xs font-semibold flex items-center gap-1 shrink-0"
+                    className="px-3 py-2 bg-rose-600/30 hover:bg-rose-600/40 text-rose-200 rounded-lg text-xs font-semibold flex items-center gap-1 shrink-0"
                   >
                     <span>Probar</span>
                     <ExternalLink className="w-3.5 h-3.5" />

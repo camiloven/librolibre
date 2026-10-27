@@ -52,18 +52,18 @@ export const BookDetailsModal: React.FC<BookDetailsModalProps> = ({
               />
             </div>
 
-            {/* TeraBox Cloud Link Button */}
-            {book.teraboxUrl && (
+            {/* MEGA Cloud Link Button */}
+            {(book.megaUrl || book.teraboxUrl) && (
               <a
-                href={book.teraboxUrl}
+                href={book.megaUrl || book.teraboxUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-4 w-full p-2.5 bg-sky-950/40 border border-sky-500/40 hover:border-sky-400 text-sky-300 hover:text-sky-200 rounded-xl text-center flex items-center justify-center gap-2 text-xs font-semibold transition-colors shadow-sm cursor-pointer"
-                title="Abrir copia original completa en la carpeta especial de TeraBox"
+                className="mt-4 w-full p-2.5 bg-rose-950/40 border border-rose-500/40 hover:border-rose-400 text-rose-300 hover:text-rose-200 rounded-xl text-center flex items-center justify-center gap-2 text-xs font-semibold transition-colors shadow-sm cursor-pointer"
+                title="Abrir copia original completa en MEGA (mega.io)"
               >
-                <Cloud className="w-4 h-4 text-sky-400 shrink-0" />
-                <span>☁️ Abrir en TeraBox (1 TB)</span>
-                <ExternalLink className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                <span className="w-4 h-4 rounded-full bg-rose-600 text-white font-bold text-[10px] flex items-center justify-center font-mono shrink-0">M</span>
+                <span>🔴 Descargar desde MEGA (mega.io)</span>
+                <ExternalLink className="w-3.5 h-3.5 text-rose-400 shrink-0" />
               </a>
             )}
 

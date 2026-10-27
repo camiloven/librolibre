@@ -71,10 +71,10 @@ export const BookCard: React.FC<BookCardProps> = ({
               GRATIS
             </span>
           ) : null}
-          {book.teraboxUrl && (
-            <span className="px-2 py-0.5 rounded-md bg-sky-950/90 border border-sky-400/40 text-sky-300 font-semibold text-[9px] tracking-wider shadow-md backdrop-blur-sm flex items-center gap-1">
-              <span>☁️</span>
-              <span>TERABOX</span>
+          {(book.megaUrl || book.teraboxUrl) && (
+            <span className="px-2 py-0.5 rounded-md bg-rose-950/90 border border-rose-500/40 text-rose-300 font-semibold text-[9px] tracking-wider shadow-md backdrop-blur-sm flex items-center gap-1 font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+              <span>MEGA</span>
             </span>
           )}
         </div>

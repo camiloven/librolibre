@@ -59,7 +59,7 @@ export const FolderManageModal: React.FC<FolderManageModalProps> = ({
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderDesc, setNewFolderDesc] = useState('');
   const [newFolderColor, setNewFolderColor] = useState('emerald');
-  const [newFolderTeraboxUrl, setNewFolderTeraboxUrl] = useState('');
+  const [newFolderMegaUrl, setNewFolderMegaUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Sync selectedFolderId when folders list updates
@@ -73,7 +73,7 @@ export const FolderManageModal: React.FC<FolderManageModalProps> = ({
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
-  const [editTeraboxUrl, setEditTeraboxUrl] = useState('');
+  const [editMegaUrl, setEditMegaUrl] = useState('');
 
   const currentFolder = folders.find((f) => f.id === selectedFolderId);
   const booksInCurrentFolder = books.filter((b) => b.folderId === selectedFolderId);
@@ -111,7 +111,8 @@ export const FolderManageModal: React.FC<FolderManageModalProps> = ({
         name: newFolderName.trim(),
         description: newFolderDesc.trim() || undefined,
         color: newFolderColor,
-        teraboxUrl: newFolderTeraboxUrl.trim() || undefined,
+        megaUrl: newFolderMegaUrl.trim() || undefined,
+        teraboxUrl: newFolderMegaUrl.trim() || undefined,
         createdAt: new Date().toISOString().split('T')[0],
       };
 
@@ -119,19 +120,18 @@ export const FolderManageModal: React.FC<FolderManageModalProps> = ({
       setSelectedFolderId(folderId);
       setNewFolderName('');
       setNewFolderDesc('');
-      setNewFolderTeraboxUrl('');
+      setNewFolderMegaUrl('');
       setIsCreatingNew(false);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-
   const handleStartEdit = (f: BookFolder) => {
     setEditingFolderId(f.id);
     setEditName(f.name);
     setEditDesc(f.description || '');
-    setEditTeraboxUrl(f.teraboxUrl || '');
+    setEditMegaUrl(f.megaUrl || f.teraboxUrl || '');
   };
 
   const handleSaveEdit = async () => {
@@ -139,7 +139,8 @@ export const FolderManageModal: React.FC<FolderManageModalProps> = ({
     await updateFolderFn(editingFolderId, {
       name: editName.trim(),
       description: editDesc.trim(),
-      teraboxUrl: editTeraboxUrl.trim() || undefined,
+      megaUrl: editMegaUrl.trim() || undefined,
+      teraboxUrl: editMegaUrl.trim() || undefined,
     });
     setEditingFolderId(null);
   };
@@ -289,16 +290,16 @@ export const FolderManageModal: React.FC<FolderManageModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-[11px] text-sky-400 mb-1 flex items-center justify-between font-semibold">
-                    <span>☁️ Enlace Carpeta Especial TeraBox (opcional)</span>
-                    <span className="text-[10px] text-sky-400/80 font-mono">1 TB Nube</span>
+                  <label className="block text-[11px] text-rose-400 mb-1 flex items-center justify-between font-semibold">
+                    <span>🔴 Enlace Carpeta Especial MEGA (mega.io)</span>
+                    <span className="text-[10px] text-rose-400/80 font-mono">Nube Segura</span>
                   </label>
                   <input
                     type="url"
-                    value={newFolderTeraboxUrl}
-                    onChange={(e) => setNewFolderTeraboxUrl(e.target.value)}
-                    placeholder="https://terabox.com/s/... (Carpeta con todos los libros de este tema)"
-                    className="w-full px-3 py-1.5 bg-slate-950 text-xs text-white rounded-lg border border-slate-800 font-mono focus:border-sky-400 focus:outline-none"
+                    value={newFolderMegaUrl}
+                    onChange={(e) => setNewFolderMegaUrl(e.target.value)}
+                    placeholder="https://mega.nz/folder/...#... (Carpeta con todos los libros de este tema)"
+                    className="w-full px-3 py-1.5 bg-slate-950 text-xs text-white rounded-lg border border-slate-800 font-mono focus:border-rose-400 focus:outline-none"
                   />
                 </div>
 
@@ -379,10 +380,10 @@ export const FolderManageModal: React.FC<FolderManageModalProps> = ({
                           />
                           <input
                             type="url"
-                            value={editTeraboxUrl}
-                            onChange={(e) => setEditTeraboxUrl(e.target.value)}
-                            placeholder="☁️ Enlace TeraBox (https://terabox.com/s/...)"
-                            className="w-full px-2.5 py-1 bg-slate-950 text-xs text-sky-300 placeholder-slate-600 rounded border border-slate-800 focus:border-sky-500"
+                            value={editMegaUrl}
+                            onChange={(e) => setEditMegaUrl(e.target.value)}
+                            placeholder="🔴 Enlace MEGA (https://mega.nz/folder/...)"
+                            className="w-full px-2.5 py-1 bg-slate-950 text-xs text-rose-300 placeholder-slate-600 rounded border border-slate-800 focus:border-rose-500 font-mono"
                           />
                           <div className="flex justify-end gap-2">
                             <button
@@ -410,9 +411,9 @@ export const FolderManageModal: React.FC<FolderManageModalProps> = ({
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5">
                                 <h5 className="font-semibold text-xs text-white truncate">{f.name}</h5>
-                                {f.teraboxUrl && (
-                                  <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.2 bg-sky-500/20 border border-sky-500/30 text-sky-300 rounded font-mono shrink-0">
-                                    ☁️ TeraBox
+                                {(f.megaUrl || f.teraboxUrl) && (
+                                  <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.2 bg-rose-500/20 border border-rose-500/30 text-rose-300 rounded font-mono shrink-0">
+                                    🔴 MEGA
                                   </span>
                                 )}
                               </div>
@@ -466,17 +467,17 @@ export const FolderManageModal: React.FC<FolderManageModalProps> = ({
                       <p className="text-xs text-slate-400 mt-0.5">{currentFolder.description}</p>
                     )}
                   </div>
-                  {currentFolder.teraboxUrl && (
+                  {(currentFolder.megaUrl || currentFolder.teraboxUrl) && (
                     <a
-                      href={currentFolder.teraboxUrl}
+                      href={currentFolder.megaUrl || currentFolder.teraboxUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-500/20 border border-sky-400/40 text-sky-300 hover:bg-sky-500/30 hover:text-sky-200 text-xs font-semibold transition-colors shrink-0 shadow-sm"
-                      title="Abrir carpeta especial en TeraBox"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-500/20 border border-rose-400/40 text-rose-300 hover:bg-rose-500/30 hover:text-rose-200 text-xs font-semibold transition-colors shrink-0 shadow-sm"
+                      title="Abrir carpeta especial en MEGA (mega.io)"
                     >
-                      <Cloud className="w-3.5 h-3.5 text-sky-400" />
-                      <span>Abrir en TeraBox</span>
-                      <ExternalLink className="w-3 h-3 text-sky-400" />
+                      <span className="w-3.5 h-3.5 rounded-full bg-rose-600 text-white font-bold text-[9px] flex items-center justify-center font-mono">M</span>
+                      <span>Abrir en MEGA</span>
+                      <ExternalLink className="w-3 h-3 text-rose-400" />
                     </a>
                   )}
                 </div>

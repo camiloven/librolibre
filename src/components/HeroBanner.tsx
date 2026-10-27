@@ -143,25 +143,26 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
                   title={folder.description || `Ver libros de ${folder.name}`}
                 >
                   <span>📁 {folder.name}</span>
-                  {folder.teraboxUrl && <span className="text-[10px] text-sky-400 font-mono">☁️</span>}
+                  {(folder.megaUrl || folder.teraboxUrl) && <span className="text-[10px] text-rose-400 font-mono">🔴</span>}
                 </button>
               ))}
 
-              {/* Quick Link to TeraBox if currently selected folder has one */}
+              {/* Quick Link to MEGA if currently selected folder has one */}
               {(() => {
                 const activeFolder = folders.find((f) => f.id === selectedFolderId);
-                if (activeFolder?.teraboxUrl) {
+                const cloudUrl = activeFolder?.megaUrl || activeFolder?.teraboxUrl;
+                if (cloudUrl) {
                   return (
                     <a
-                      href={activeFolder.teraboxUrl}
+                      href={cloudUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-3 py-1 text-xs font-semibold rounded-lg bg-sky-500/25 hover:bg-sky-500/35 text-sky-300 hover:text-white border border-sky-400/50 transition-colors flex items-center gap-1.5 shadow-sm ml-1"
-                      title={`Abrir carpeta "${activeFolder.name}" en TeraBox (1024 GB)`}
+                      className="px-3 py-1 text-xs font-semibold rounded-lg bg-rose-500/25 hover:bg-rose-500/35 text-rose-300 hover:text-white border border-rose-400/50 transition-colors flex items-center gap-1.5 shadow-sm ml-1"
+                      title={`Abrir carpeta "${activeFolder.name}" en MEGA (mega.io)`}
                     >
-                      <Cloud className="w-3.5 h-3.5 text-sky-400" />
-                      <span>Descargar desde TeraBox ({activeFolder.name})</span>
-                      <ExternalLink className="w-3 h-3 text-sky-400" />
+                      <span className="w-3.5 h-3.5 rounded-full bg-rose-600 text-white font-bold text-[9px] flex items-center justify-center font-mono">M</span>
+                      <span>Descargar desde MEGA ({activeFolder.name})</span>
+                      <ExternalLink className="w-3 h-3 text-rose-400" />
                     </a>
                   );
                 }

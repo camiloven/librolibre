@@ -31,7 +31,8 @@ export interface Book {
   fileSize: string;
   fileName?: string;
   downloadUrl?: string;
-  teraboxUrl?: string; // Optional direct TeraBox folder or file download link
+  megaUrl?: string; // Direct MEGA (mega.nz / mega.io) file or folder download link
+  teraboxUrl?: string; // Optional legacy TeraBox link
   uploadedFileBlob?: Blob | ArrayBuffer | string;
   sampleChapters: Chapter[];
   rating: number;
@@ -47,7 +48,8 @@ export interface BookFolder {
   name: string; // e.g. "Medicina", "Terror", "Romántica", "Ciencia Ficción"
   description?: string;
   color?: string; // Color identifier: "emerald" | "rose" | "purple" | "amber" | "sky" | "red" | "indigo"
-  teraboxUrl?: string; // Optional special TeraBox folder link for this entire thematic collection
+  megaUrl?: string; // Direct MEGA folder link for this entire thematic collection
+  teraboxUrl?: string; // Optional legacy link
   iconName?: string;
   createdAt: string;
 }
@@ -96,7 +98,8 @@ export interface AuthorProfile {
   avatarUrl: string;
   email: string;
   website?: string;
-  teraboxLibraryUrl?: string; // Master TeraBox folder link for the whole author collection
+  megaLibraryUrl?: string; // Master MEGA cloud folder for the author's collection
+  teraboxLibraryUrl?: string; // Optional legacy link
   currency: 'CLP' | 'USD';
   currencySymbol: string;
   adminPin: string; // PIN for administrator mode to protect book deletion and library controls

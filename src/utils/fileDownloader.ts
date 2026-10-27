@@ -251,7 +251,8 @@ export function createRealPdfBook(
 
   let nextY = 44 + synopsisLines.length * 5.5 + 12;
 
-  const cardHeight = book.teraboxUrl ? 46 : 40;
+  const cloudUrl = book.megaUrl || book.teraboxUrl;
+  const cardHeight = cloudUrl ? 46 : 40;
   doc.setFillColor(248, 250, 252);
   doc.roundedRect(margin, nextY, contentWidth, cardHeight, 2, 2, 'F');
   doc.setDrawColor(226, 232, 240);
@@ -269,8 +270,8 @@ export function createRealPdfBook(
   doc.text(`• Autor: ${book.author}`, margin + 6, nextY + 21);
   doc.text(`• Género: ${book.genre} | Páginas estimadas: ${book.pageCount}`, margin + 6, nextY + 27);
   doc.text(`• Publicación: LibroLibre Chile · Distribución independiente`, margin + 6, nextY + 33);
-  if (book.teraboxUrl) {
-    doc.text(`• Respaldo en la Nube (TeraBox): ${book.teraboxUrl}`, margin + 6, nextY + 39);
+  if (cloudUrl) {
+    doc.text(`• Respaldo en la Nube (MEGA): ${cloudUrl}`, margin + 6, nextY + 39);
   }
 
   // ----------------------------------------------------
@@ -435,8 +436,9 @@ function buildBookDocumentText(book: Book, readerName: string, downloadToken?: s
   if (downloadToken) {
     doc += `• Código de verificación: ${downloadToken}\n`;
   }
-  if (book.teraboxUrl) {
-    doc += `• Descarga directa en la Nube (TeraBox 1TB): ${book.teraboxUrl}\n`;
+  const cloudUrl = book.megaUrl || book.teraboxUrl;
+  if (cloudUrl) {
+    doc += `• Descarga directa en la Nube (MEGA / mega.io): ${cloudUrl}\n`;
   }
   doc += `\nSINOPSIS:\n${book.synopsis}\n\n`;
 

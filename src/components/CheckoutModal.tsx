@@ -196,46 +196,46 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </div>
             </div>
 
-            {/* TeraBox Cloud Download Option */}
-            {book.teraboxUrl ? (
-              <div className="mb-6 p-4 rounded-xl bg-sky-950/40 border border-sky-500/40 text-left space-y-2">
-                <div className="flex items-center gap-2 text-sky-400 font-semibold text-xs">
-                  <Cloud className="w-4 h-4 text-sky-400 shrink-0" />
-                  <span>Copia Maestra en la Nube (TeraBox · Carpeta Especial)</span>
+            {/* MEGA Cloud Download Option */}
+            {(book.megaUrl || book.teraboxUrl) ? (
+              <div className="mb-6 p-4 rounded-xl bg-rose-950/40 border border-rose-500/40 text-left space-y-2">
+                <div className="flex items-center gap-2 text-rose-400 font-semibold text-xs">
+                  <span className="w-4 h-4 rounded-full bg-rose-600 text-white font-bold text-[10px] flex items-center justify-center font-mono shrink-0">M</span>
+                  <span>Copia Maestra en MEGA (mega.io · Descarga Directa)</span>
                 </div>
-                <p className="text-xs text-sky-200/80 leading-relaxed">
-                  El autor ha subido una copia original completa de este libro a su carpeta especial en TeraBox (1024 GB). Puedes abrirla o descargarla a máxima velocidad directamente desde su enlace oficial:
+                <p className="text-xs text-rose-200/80 leading-relaxed">
+                  El autor ha subido una copia original completa de este libro a <strong>MEGA (mega.io)</strong>. Puedes abrirla o descargarla a máxima velocidad sin publicidad directamente desde su enlace oficial:
                 </p>
                 <div className="pt-1">
                   <a
-                    href={book.teraboxUrl}
+                    href={book.megaUrl || book.teraboxUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center gap-2 w-full px-5 py-3 text-xs font-bold bg-sky-500 hover:bg-sky-400 text-slate-950 rounded-xl transition-colors shadow-lg cursor-pointer"
+                    className="inline-flex items-center justify-center gap-2 w-full px-5 py-3 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-xl transition-colors shadow-lg cursor-pointer"
                   >
-                    <Cloud className="w-4 h-4" />
-                    <span>Descargar desde TeraBox (Carpeta Especial)</span>
+                    <span className="w-4 h-4 rounded-full bg-white text-rose-600 font-bold text-[10px] flex items-center justify-center font-mono">M</span>
+                    <span>Descargar desde MEGA (mega.io)</span>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 </div>
               </div>
-            ) : authorProfile.teraboxLibraryUrl ? (
-              <div className="mb-6 p-4 rounded-xl bg-sky-950/30 border border-sky-500/30 text-left space-y-2">
-                <div className="flex items-center gap-2 text-sky-400 font-semibold text-xs">
-                  <Cloud className="w-4 h-4 text-sky-400 shrink-0" />
-                  <span>Bóveda Maestra en TeraBox</span>
+            ) : (authorProfile.megaLibraryUrl || authorProfile.teraboxLibraryUrl) ? (
+              <div className="mb-6 p-4 rounded-xl bg-rose-950/30 border border-rose-500/30 text-left space-y-2">
+                <div className="flex items-center gap-2 text-rose-400 font-semibold text-xs">
+                  <span className="w-4 h-4 rounded-full bg-rose-600 text-white font-bold text-[10px] flex items-center justify-center font-mono shrink-0">M</span>
+                  <span>Bóveda Maestra en MEGA</span>
                 </div>
-                <p className="text-xs text-sky-200/80">
-                  Accede a la biblioteca completa de respaldos del autor alojada en TeraBox Cloud:
+                <p className="text-xs text-rose-200/80">
+                  Accede a la biblioteca completa de respaldos del autor alojada en MEGA Cloud:
                 </p>
                 <a
-                  href={authorProfile.teraboxLibraryUrl}
+                  href={authorProfile.megaLibraryUrl || authorProfile.teraboxLibraryUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 text-xs font-bold bg-sky-600/30 hover:bg-sky-600/40 text-sky-200 border border-sky-400/30 rounded-xl transition-colors"
+                  className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 text-xs font-bold bg-rose-600/30 hover:bg-rose-600/40 text-rose-200 border border-rose-400/30 rounded-xl transition-colors"
                 >
-                  <Cloud className="w-4 h-4" />
-                  <span>Abrir Bóveda TeraBox del Autor</span>
+                  <span className="w-4 h-4 rounded-full bg-rose-600 text-white font-bold text-[10px] flex items-center justify-center font-mono">M</span>
+                  <span>Abrir Bóveda MEGA del Autor</span>
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               </div>

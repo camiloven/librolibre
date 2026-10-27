@@ -217,7 +217,7 @@ export async function cleanDuplicateBooksInFirestore(): Promise<number> {
       const normTitle = rawTitle.replace(/[^a-záéíóúñ0-9]/g, '');
       if (!normTitle) continue;
 
-      const hasFile = Boolean(data.downloadUrl || data.teraboxUrl);
+      const hasFile = Boolean(data.downloadUrl || data.megaUrl || data.teraboxUrl);
       const createdAt = data.createdAt || '';
 
       if (seenTitles.has(normTitle)) {
