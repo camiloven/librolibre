@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Book, BookFolder, PricingType } from '../types/book';
 import { 
   X, Sparkles, DollarSign, Folder, Check, AlertCircle, 
-  FileText, ShieldCheck, Tag, Loader2 
+  FileText, ShieldCheck, Tag, Loader2, Image as ImageIcon, Upload, RefreshCw
 } from 'lucide-react';
+import { generateTextBookCover } from '../utils/pdfCoverExtractor';
+import { compressImage } from '../utils/imageCompressor';
 
 interface EditBookModalProps {
   book: Book;
@@ -54,6 +56,25 @@ export const EditBookModal: React.FC<EditBookModalProps> = ({
     book.priceUSD && book.priceUSD > 0 ? String(book.priceUSD) : ''
   );
 
+  // Cover image state
+  const [coverUrl, setCoverUrl] = useState<string>(book.coverUrl || '');
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      try {
+        const compressed = await compressImage(file, { maxWidth: 800, quality: 0.82 });
+        setCoverUrl(compressed);
+      } catch (err) {
+        console.warn('Cover compression failed, using direct reader:', err);
+        const reader = new FileReader();
+        reader.onload = () => setCoverUrl(reader.result as string);
+        reader.readAsDataURL(file);
+      }
+    }
+  };
+
   const [isSaving, setIsSaving] = useState(false);
 
   // Quick helper to suggest USD based on CLP (~950 CLP/USD)
@@ -87,6 +108,7 @@ export const EditBookModal: React.FC<EditBookModalProps> = ({
       genre: genre.trim(),
       folderId: folderId ? folderId : undefined,
       folderName: selectedFolder ? selectedFolder.name : undefined,
+      coverUrl: coverUrl || book.coverUrl,
       megaUrl: megaUrl.trim() || undefined,
       teraboxUrl: megaUrl.trim() || undefined,
       isLiberated: isLiberated,
@@ -315,6 +337,107 @@ export const EditBookModal: React.FC<EditBookModalProps> = ({
             <p className="text-[11px] text-slate-400 leading-relaxed">
               Pega aquí el enlace público o carpeta compartida de <strong>MEGA (mega.io / mega.nz)</strong> para que los lectores descarguen la obra completa directamente a máxima velocidad y sin publicidad.
             </p>
+          </div>
+
+          {/* SECTION 2.6: BOOK COVER MANAGEMENT */}
+          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-amber-400 font-mono flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-amber-400" />
+                <span>Portada del Libro</span>
+              </h4>
+              <span className="text-[10px] text-slate-400 font-mono">
+                Carátula Oficial
+              </span>
+            </div>
+
+            <input
+              type="file"
+              ref={coverInputRef}
+              onChange={handleCoverUpload}
+              accept="image/*"
+              className="hidden"
+            />
+
+            <div className="flex items-start gap-4">
+              <div 
+                onClick={() => coverInputRef.current?.click()}
+                className="relative w-24 h-32 rounded-lg bg-slate-900 border border-slate-700 overflow-hidden flex items-center justify-center cursor-pointer hover:border-amber-400 shrink-0 shadow group"
+              >
+                {coverUrl ? (
+                  <>
+                    <img 
+                      src={coverUrl} 
+                      alt="Portada" 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
+                    />
+                    <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-center p-1">
+                      <Upload className="w-4 h-4 text-amber-400 mb-0.5" />
+                      <span className="text-[9px] text-white">Cambiar</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center p-2">
+                    <ImageIcon className="w-6 h-6 text-slate-500 mx-auto mb-1" />
+                    <span className="text-[10px] text-slate-400">Sin foto</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-1 space-y-2">
+                <p className="text-xs text-slate-300">
+                  Puedes subir una imagen desde tu celular/PC o generar una carátula automática con el título actual.
+                </p>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => coverInputRef.current?.click()}
+                    className="px-3 py-1.5 text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-lg flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>📸 Subir Foto de Portada</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const gen = generateTextBookCover(title || book.title, author || book.author, 'navy');
+                      setCoverUrl(gen);
+                    }}
+                    className="px-3 py-1.5 text-xs font-semibold bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-400/30 rounded-lg flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>🎨 Generar Portada</span>
+                  </button>
+                </div>
+
+                {/* Theme Selector */}
+                <div className="flex items-center gap-2 pt-1 text-[11px] text-slate-400">
+                  <span>Colores automáticos:</span>
+                  <div className="flex items-center gap-1.5">
+                    {[
+                      { id: 'navy', label: 'Azul Noche', color: 'bg-sky-600' },
+                      { id: 'burgundy', label: 'Borgoña', color: 'bg-rose-700' },
+                      { id: 'emerald', label: 'Esmeralda', color: 'bg-emerald-600' },
+                      { id: 'amber', label: 'Dorado', color: 'bg-amber-600' },
+                      { id: 'noir', label: 'Carbón', color: 'bg-zinc-800' }
+                    ].map((th) => (
+                      <button
+                        key={th.id}
+                        type="button"
+                        onClick={() => {
+                          const gen = generateTextBookCover(title || book.title, author || book.author, th.id as any);
+                          setCoverUrl(gen);
+                        }}
+                        className={`w-5 h-5 rounded-full ${th.color} border border-white/30 hover:scale-110 transition-transform cursor-pointer`}
+                        title={`Generar en color ${th.label}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* SECTION 3: METADATA */}

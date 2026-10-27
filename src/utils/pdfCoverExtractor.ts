@@ -102,45 +102,82 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 }
 
 /**
- * Creates a clean cover canvas fallback with the title if PDF has no rasterized cover
+/**
+ * Creates an elegant editorial book cover canvas with title, author, and customizable theme palettes
  */
-export function generateTextBookCover(title: string): string {
+export function generateTextBookCover(
+  title: string, 
+  authorName?: string, 
+  theme: 'navy' | 'burgundy' | 'emerald' | 'amber' | 'noir' = 'navy'
+): string {
   const canvas = document.createElement('canvas');
   canvas.width = 600;
   canvas.height = 800; // 3:4 aspect ratio
   const ctx = canvas.getContext('2d');
   if (!ctx) return '';
 
-  // Background gradient (elegant navy / charcoal)
+  const themes = {
+    navy: { top: '#0f172a', bottom: '#020617', border: 'rgba(56, 189, 248, 0.4)', accent: '#38bdf8' },
+    burgundy: { top: '#450a0a', bottom: '#1c0404', border: 'rgba(244, 63, 94, 0.4)', accent: '#f43f5e' },
+    emerald: { top: '#064e3b', bottom: '#022c22', border: 'rgba(52, 211, 153, 0.4)', accent: '#34d399' },
+    amber: { top: '#451a03', bottom: '#1c0b02', border: 'rgba(245, 158, 11, 0.4)', accent: '#fbbf24' },
+    noir: { top: '#18181b', bottom: '#09090b', border: 'rgba(250, 250, 250, 0.3)', accent: '#e4e4e7' }
+  };
+
+  const selectedTheme = themes[theme] || themes.navy;
+
+  // Background gradient
   const grad = ctx.createLinearGradient(0, 0, 600, 800);
-  grad.addColorStop(0, '#0f172a');
-  grad.addColorStop(1, '#020617');
+  grad.addColorStop(0, selectedTheme.top);
+  grad.addColorStop(1, selectedTheme.bottom);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, 600, 800);
 
-  // Decorative border
-  ctx.strokeStyle = 'rgba(245, 158, 11, 0.4)';
+  // Decorative border outer
+  ctx.strokeStyle = selectedTheme.border;
   ctx.lineWidth = 4;
   ctx.strokeRect(30, 30, 540, 740);
 
-  ctx.strokeStyle = 'rgba(245, 158, 11, 0.2)';
+  // Decorative border inner
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
   ctx.lineWidth = 1;
   ctx.strokeRect(40, 40, 520, 720);
 
+  // Header Stamp
+  ctx.fillStyle = selectedTheme.accent;
+  ctx.font = 'bold 12px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('◆ COLECCIÓN AUTOR INDEPENDIENTE ◆', 300, 85);
+
   // Title text
-  ctx.fillStyle = '#f8fafc';
+  ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 36px Georgia, serif';
   ctx.textAlign = 'center';
 
-  const cleanTitle = title.replace(/[_-]/g, ' ').toUpperCase();
-  wrapText(ctx, cleanTitle, 300, 320, 440, 48);
+  const cleanTitle = (title || 'LIBRO DIGITAL').replace(/[_-]/g, ' ').toUpperCase();
+  wrapText(ctx, cleanTitle, 300, 330, 440, 46);
+
+  // Golden separator line
+  ctx.strokeStyle = selectedTheme.accent;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(220, 500);
+  ctx.lineTo(380, 500);
+  ctx.stroke();
+
+  // Author name
+  if (authorName && authorName.trim()) {
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = 'italic 20px Georgia, serif';
+    ctx.fillText(authorName.trim(), 300, 545);
+  }
 
   // Footer label
-  ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 16px sans-serif';
-  ctx.fillText('EDICIÓN DIGITAL DEL AUTOR', 300, 700);
+  ctx.fillStyle = selectedTheme.accent;
+  ctx.font = 'bold 14px monospace';
+  ctx.fillText('LIBROLIBRE CHILE · EDICIÓN DIGITAL', 300, 710);
 
-  return canvas.toDataURL('image/jpeg', 0.85);
+  return canvas.toDataURL('image/jpeg', 0.88);
 }
 
 function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number) {

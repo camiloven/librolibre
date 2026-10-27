@@ -740,6 +740,25 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
                     <Loader2 className="w-4 h-4 text-amber-400 animate-spin shrink-0" />
                     <span>Leyendo el documento y renderizando la primera página como portada oficial...</span>
                   </div>
+                ) : coverSource === 'manual' ? (
+                  <div className="p-3 bg-sky-950/40 border border-sky-800/60 rounded-lg">
+                    <div className="text-xs font-semibold text-sky-400">
+                      ✓ Imagen de portada personalizada seleccionada
+                    </div>
+                    <p className="text-[11px] text-slate-300 mt-0.5">
+                      Esta imagen representará tu libro en la biblioteca y en los resultados de búsqueda.
+                    </p>
+                  </div>
+                ) : coverSource === 'generated' ? (
+                  <div className="p-3 bg-indigo-950/40 border border-indigo-800/60 rounded-lg">
+                    <div className="text-xs font-semibold text-indigo-300 flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Portada editorial generada automáticamente</span>
+                    </div>
+                    <p className="text-[11px] text-slate-300 mt-0.5">
+                      Diseñada con tipografía clásica, marcos de edición y tu nombre de autor. Puedes cambiar de color abajo.
+                    </p>
+                  </div>
                 ) : coverSource === 'auto-pdf' ? (
                   <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-lg space-y-1">
                     <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
@@ -747,16 +766,20 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
                       <span>¡Portada extraída con éxito de la primera página del libro subido!</span>
                     </div>
                     <p className="text-[11px] text-slate-300">
-                      La plataforma usará la carátula o portada original que viene en tu archivo PDF. No necesitas diseñar ni buscar otra imagen externa.
+                      La plataforma usará la carátula o portada original que viene en tu archivo PDF.
                     </p>
                   </div>
-                ) : coverSource === 'manual' ? (
-                  <div className="p-3 bg-sky-950/40 border border-sky-800/60 rounded-lg">
-                    <div className="text-xs font-semibold text-sky-400">
-                      Imagen de portada personalizada seleccionada
+                ) : uploadMode === 'mega' ? (
+                  <div className="p-3 bg-slate-900/90 border border-slate-800 rounded-lg space-y-1">
+                    <div className="text-xs font-semibold text-rose-300 flex items-center gap-1.5">
+                      <Info className="w-3.5 h-3.5 text-rose-400" />
+                      <span>¿Cómo añadir la portada al usar enlace de MEGA?</span>
                     </div>
-                    <p className="text-[11px] text-slate-300 mt-0.5">
-                      Has elegido una imagen personalizada para representar tu obra.
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      1. <strong className="text-amber-400">Sube una foto o imagen</strong> desde tu celular/PC con el botón amarillo (pesa poco y carga al instante).
+                    </p>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      2. O toca <strong className="text-indigo-400">«Generar Portada Editorial»</strong> para crear una carátula elegante con el título en 1 segundo.
                     </p>
                   </div>
                 ) : (
@@ -783,10 +806,24 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
                   <button
                     type="button"
                     onClick={() => coverInputRef.current?.click()}
-                    className="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg flex items-center gap-1.5 cursor-pointer"
+                    className="px-3.5 py-1.5 text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-lg flex items-center gap-1.5 cursor-pointer shadow-sm"
                   >
                     <Upload className="w-3.5 h-3.5" />
-                    <span>Subir otra imagen manualmente</span>
+                    <span>📸 Subir Foto de Portada</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const gen = generateTextBookCover(title || 'Libro Digital', author || defaultAuthorName, 'navy');
+                      setCoverPreview(gen);
+                      setCoverUrl(gen);
+                      setCoverSource('generated');
+                    }}
+                    className="px-3 py-1.5 text-xs font-semibold bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-400/30 rounded-lg flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>🎨 Generar Portada Editorial</span>
                   </button>
 
                   {coverPreview && (
@@ -803,6 +840,33 @@ export const UploadBookModal: React.FC<UploadBookModalProps> = ({
                       Limpiar
                     </button>
                   )}
+                </div>
+
+                {/* Theme Selector when generating or customizing cover */}
+                <div className="flex items-center gap-2 pt-1.5 text-[11px] text-slate-400">
+                  <span>Estilos de portada automática:</span>
+                  <div className="flex items-center gap-1.5">
+                    {[
+                      { id: 'navy', label: 'Azul Noche', color: 'bg-sky-600' },
+                      { id: 'burgundy', label: 'Borgoña', color: 'bg-rose-700' },
+                      { id: 'emerald', label: 'Esmeralda', color: 'bg-emerald-600' },
+                      { id: 'amber', label: 'Dorado', color: 'bg-amber-600' },
+                      { id: 'noir', label: 'Carbón', color: 'bg-zinc-800' }
+                    ].map((th) => (
+                      <button
+                        key={th.id}
+                        type="button"
+                        onClick={() => {
+                          const gen = generateTextBookCover(title || 'Libro Digital', author || defaultAuthorName, th.id as any);
+                          setCoverPreview(gen);
+                          setCoverUrl(gen);
+                          setCoverSource('generated');
+                        }}
+                        className={`w-5 h-5 rounded-full ${th.color} border border-white/30 hover:scale-110 transition-transform cursor-pointer`}
+                        title={`Generar portada en color ${th.label}`}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
